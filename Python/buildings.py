@@ -6,7 +6,7 @@
 
 # ============================================================
 # IDENTIFIANTS ET JOURNAL
-# Fonctions locales pour éviter l'import circulaire
+# Fonctions locales : aucune dépendance envers world.py
 # ============================================================
 
 def new_id(world, prefix):
@@ -85,60 +85,107 @@ def start_building(world, cid, city_id, kind, x, z):
     civ = world["civilizations"].get(cid)
     city = world["cities"].get(city_id)
 
-    if not civ or not city or city["owner_id"] != cid:
+    if civ is None or city is None:
         return {
             "ok": False,
-            "message": "Ville invalide."
+            "message": "Ville ou civilisation introuvable."
+        }
+
+    if city.get("owner_id") != cid:
+        return {
+            "ok": False,
+            "message": "Cette ville ne vous appartient pas."
         }
 
     spec = CATALOG.get(kind)
 
-    if not spec:
+    if spec is None:
         return {
             "ok": False,
             "message": "Bâtiment inconnu."
         }
 
+    # --------------------------------------------------------
     # Vérification du palais
+    # Le palais est autorisé uniquement dans la capitale.
+    # Un seul palais par civilisation.
+    # --------------------------------------------------------
+
     if kind == "palace":
 
-        if not city["is_capital"] or any(
-            world["buildings"][b]["type"] == "palace"
-            for b in city["building_ids"]
-            if b in world["buildings"]
-        ):
-
+        if not city.get("is_capital", False):
             return {
                 "ok": False,
-                "message": "Le palais ne peut être construit que dans la capitale, une seule fois."
+                "message": "Le palais doit être construit dans la capitale."
             }
 
-    # Vérification des travailleurs
-    if (
-        civ["workers"] - civ["assigned_workers"]
-        < spec.get("workforce", 0)
-    ):
+        existing_palace = any(
+            building.get("type") == "palace"
+            and building.get("owner_id") == cid
+            for building in world["buildings"].values()
+        )
 
+        if existing_palace:
+            return {
+                "ok": False,
+                "message": "Votre civilisation possède déjà un palais."
+            }
+
+    # --------------------------------------------------------
+    # Vérification des travailleurs
+    # --------------------------------------------------------
+
+    required_workers = spec.get("workforce", 0)
+
+    available_workers = (
+        civ.get("workers", 0)
+        - civ.get("assigned_workers", 0)
+    )
+
+    if available_workers < required_workers:
         return {
             "ok": False,
             "message": "Pas assez de travailleurs disponibles."
         }
 
+    # --------------------------------------------------------
     # Vérification des ressources
+    # --------------------------------------------------------
+
+    resources = civ.get("resources", {})
+
     for resource, cost in spec["cost"].items():
 
-        if civ["resources"].get(resource, 0) < cost:
-
+        if resources.get(resource, 0) < cost:
             return {
                 "ok": False,
                 "message": f"Ressources insuffisantes : {resource}."
             }
 
-    # Déduction des ressources
-    for resource, cost in spec["cost"].items():
-        civ["resources"][resource] -= cost
+    # --------------------------------------------------------
+    # Validation des coordonnées
+    # --------------------------------------------------------
 
+    try:
+        x = float(x)
+        z = float(z)
+    except (TypeError, ValueError):
+        return {
+            "ok": False,
+            "message": "Coordonnées de construction invalides."
+        }
+
+    # --------------------------------------------------------
+    # Déduction des ressources
+    # --------------------------------------------------------
+
+    for resource, cost in spec["cost"].items():
+        resources[resource] -= cost
+
+    # --------------------------------------------------------
     # Création du bâtiment
+    # --------------------------------------------------------
+
     building_id = new_id(world, "building")
 
     building = {
@@ -147,9 +194,9 @@ def start_building(world, cid, city_id, kind, x, z):
         "name": spec["name"],
         "owner_id": cid,
         "city_id": city_id,
-        "x": float(x),
-        "z": float(z),
-        "progress": 0,
+        "x": x,
+        "z": z,
+        "progress": 0.0,
         "duration": spec["duration"],
         "complete": False,
         "level": 1
@@ -157,9 +204,11 @@ def start_building(world, cid, city_id, kind, x, z):
 
     world["buildings"][building_id] = building
 
-    city["building_ids"].append(building_id)
+    city.setdefault("building_ids", []).append(building_id)
 
-    civ["assigned_workers"] += spec.get("workforce", 0)
+    civ["assigned_workers"] = (
+        civ.get("assigned_workers", 0) + required_workers
+    )
 
     log(
         world,
@@ -179,38 +228,58 @@ def start_building(world, cid, city_id, kind, x, z):
 
 def update_construction(world, dt):
 
-    for building in world["buildings"].values():
+    dt = max(0.0, float(dt))
 
-        if building["complete"]:
+    for building in list(world["buildings"].values()):
+
+        if building.get("complete", False):
             continue
 
+        duration = max(1, building.get("duration", 1))
+
         building["progress"] = min(
-            1,
-            building["progress"] +
-            dt / max(1, building["duration"])
+            1.0,
+            building.get("progress", 0.0) + dt / duration
         )
 
-        if building["progress"] >= 1:
+        # ----------------------------------------------------
+        # Construction terminée
+        # ----------------------------------------------------
 
+        if building["progress"] >= 1.0:
+
+            building["progress"] = 1.0
             building["complete"] = True
 
-            civ = world["civilizations"][
+            civ = world["civilizations"].get(
                 building["owner_id"]
-            ]
+            )
 
-            spec = CATALOG[building["type"]]
+            if civ is None:
+                continue
+
+            spec = CATALOG.get(building["type"], {})
+
+            # ------------------------------------------------
+            # Augmentation de la capacité de logement
+            # ------------------------------------------------
 
             if building["type"] == "house":
 
                 housing = spec.get("housing", 0)
 
-                civ["housing"] += housing
+                civ["housing"] = (
+                    civ.get("housing", 0) + housing
+                )
 
-                city = world["cities"][
+                city = world["cities"].get(
                     building["city_id"]
-                ]
+                )
 
-                city["housing"] += housing
+                if city is not None:
+                    city["housing"] = (
+                        city.get("housing", 0) + housing
+                    )
 
             log(
                 world,
