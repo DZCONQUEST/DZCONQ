@@ -1,45 +1,364 @@
-<!doctype html>
+```html
+<!DOCTYPE html>
 <html lang="fr">
+
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DZ CONQUEST V3.0 — Monde ouvert 3D</title>
-<link rel="stylesheet" href="styles/dz_base.css">
-<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="theme-color"
+        content="#101b18"
+    >
+
+    <meta
+        name="description"
+        content="DZ CONQUEST V3.0 — Jeu de stratégie, gestion et conquête dans un monde ouvert en 3D."
+    >
+
+    <title>DZ CONQUEST V3.0 — Monde ouvert 3D</title>
+
+    <!-- =====================================================
+         STYLES
+    ====================================================== -->
+
+    <link
+        rel="stylesheet"
+        href="./styles/dz_base.css"
+    >
+
+    <!-- =====================================================
+         THREE.JS
+    ====================================================== -->
+
+    <script
+        src="https://unpkg.com/three@0.160.0/build/three.min.js"
+    ></script>
+
+    <!-- =====================================================
+         PYODIDE
+    ====================================================== -->
+
+    <script
+        src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"
+    ></script>
+
 </head>
+
 <body>
-<div id="scene-container"></div>
-<header id="topbar">
-  <div class="brand"><span class="flag">◐</span><div><b>DZ CONQUEST</b><small>V3.0 · MONDE OUVERT</small></div></div>
-  <div class="resources">
-    <div>🪙 <b id="gold">1000</b><small>Or</small></div><div>🌾 <b id="food">1000</b><small>Nourriture</small></div>
-    <div>🌲 <b id="wood">1000</b><small>Bois</small></div><div>⛏️ <b id="iron">1000</b><small>Fer</small></div>
-  </div>
-  <div class="right"><span id="population">Population : 2 / 2</span><button id="pause">Ⅱ</button><button id="save">Sauvegarder</button><button id="load">Charger</button></div>
-</header>
-<aside id="left-panel" class="panel">
-  <h3>Votre civilisation</h3><div id="civilization">En attente du lancement…</div>
-  <hr><h3>Construction</h3><div id="buildings" class="button-grid"></div>
-  <hr><h3>Armée</h3><button id="recruit">Recruter 1 soldat — 100 or / 50 nourriture</button>
-  <button id="found-city">Fonder une ville</button>
-  <hr><h3>Adversaires</h3><div id="opponents">Chargement de la simulation…</div>
-</aside>
-<aside id="right-panel" class="panel">
-  <h3>Inspecteur</h3><div id="inspector">Cliquez sur le terrain ou un élément du monde.</div>
-  <hr><h3>Journal du monde</h3><div id="log"></div>
-</aside>
-<div id="bottom-hint">Clic gauche : sélectionner / choisir un emplacement · Molette : zoom · Clic droit : déplacer la caméra</div>
-<div id="start-overlay">
- <section class="start-card">
-  <div class="eyebrow">STRATÉGIE · GESTION · CONQUÊTE</div><h1>DZ CONQUEST <em>V3.0</em></h1>
-  <p>Un monde ouvert inspiré de la géographie algérienne. Fondez votre civilisation, développez votre économie et affrontez des adversaires autonomes.</p>
-  <label>Nom du joueur<input id="player-name" value="Joueur"></label>
-  <label>Nom de la civilisation<input id="civ-name" value="Nouvelle civilisation"></label>
-  <label>Adversaires<select id="ai-count"><option value="1">1 adversaire</option><option value="2" selected>2 adversaires</option><option value="3">3 adversaires</option></select></label>
-  <button id="start-game" class="primary">Initialiser le monde</button>
-  <small id="loading-status">Python / Pyodide : en attente</small>
- </section>
-</div>
-<script src="data/resources.js"></script><script src="data/buildings.js"></script><script src="data/units.js"></script><script src="data/technologies.js"></script><script src="data/eras.js"></script><script src="data/settings.js"></script>
-<script src="Engine/dz_python_bridge.js"></script><script src="Engine/dz_world.js"></script><script src="Engine/dz_controls.js"></script><script src="Engine/dz_hud.js"></script><script src="Engine/dz_main.js"></script>
-</body></html>
+
+    <!-- =====================================================
+         MONDE 3D
+    ====================================================== -->
+
+    <div id="scene-container"></div>
+
+
+    <!-- =====================================================
+         BARRE SUPÉRIEURE
+    ====================================================== -->
+
+    <header id="topbar">
+
+        <div class="brand">
+
+            <span class="flag">◐</span>
+
+            <div>
+                <b>DZ CONQUEST</b>
+                <small>V3.0 · MONDE OUVERT</small>
+            </div>
+
+        </div>
+
+
+        <!-- RESSOURCES -->
+
+        <div class="resources">
+
+            <div>
+                🪙
+                <b id="gold">1000</b>
+                <small>Or</small>
+            </div>
+
+            <div>
+                🌾
+                <b id="food">1000</b>
+                <small>Nourriture</small>
+            </div>
+
+            <div>
+                🌲
+                <b id="wood">1000</b>
+                <small>Bois</small>
+            </div>
+
+            <div>
+                ⛏️
+                <b id="iron">1000</b>
+                <small>Fer</small>
+            </div>
+
+        </div>
+
+
+        <!-- COMMANDES -->
+
+        <div class="right">
+
+            <span id="population">
+                Population : 2 / 2
+            </span>
+
+            <button id="pause" type="button">
+                Ⅱ
+            </button>
+
+            <button id="save" type="button">
+                Sauvegarder
+            </button>
+
+            <button id="load" type="button">
+                Charger
+            </button>
+
+        </div>
+
+    </header>
+
+
+    <!-- =====================================================
+         PANNEAU GAUCHE
+    ====================================================== -->
+
+    <aside id="left-panel" class="panel">
+
+        <h3>Votre civilisation</h3>
+
+        <div id="civilization">
+            En attente du lancement…
+        </div>
+
+        <hr>
+
+        <h3>Construction</h3>
+
+        <div
+            id="buildings"
+            class="button-grid"
+        ></div>
+
+        <hr>
+
+        <h3>Armée</h3>
+
+        <button id="recruit" type="button">
+            Recruter 1 soldat — 100 or / 50 nourriture
+        </button>
+
+        <button id="found-city" type="button">
+            Fonder une ville
+        </button>
+
+        <hr>
+
+        <h3>Adversaires</h3>
+
+        <div id="opponents">
+            Chargement de la simulation…
+        </div>
+
+    </aside>
+
+
+    <!-- =====================================================
+         PANNEAU DROIT
+    ====================================================== -->
+
+    <aside id="right-panel" class="panel">
+
+        <h3>Inspecteur</h3>
+
+        <div id="inspector">
+            Cliquez sur le terrain ou un élément du monde.
+        </div>
+
+        <hr>
+
+        <h3>Journal du monde</h3>
+
+        <div id="log"></div>
+
+    </aside>
+
+
+    <!-- =====================================================
+         AIDE
+    ====================================================== -->
+
+    <div id="bottom-hint">
+
+        Clic gauche : sélectionner / choisir un emplacement
+        · Molette : zoom
+        · Clic droit : déplacer la caméra
+
+    </div>
+
+
+    <!-- =====================================================
+         ÉCRAN DE DÉMARRAGE
+    ====================================================== -->
+
+    <div id="start-overlay">
+
+        <section class="start-card">
+
+            <div class="eyebrow">
+                STRATÉGIE · GESTION · CONQUÊTE
+            </div>
+
+            <h1>
+                DZ CONQUEST
+                <em>V3.0</em>
+            </h1>
+
+            <p>
+                Un monde ouvert inspiré de la géographie algérienne.
+                Fondez votre civilisation, développez votre économie
+                et affrontez des adversaires autonomes.
+            </p>
+
+
+            <!-- JOUEUR -->
+
+            <label for="player-name">
+                Nom du joueur
+
+                <input
+                    id="player-name"
+                    type="text"
+                    value="Joueur"
+                    maxlength="30"
+                >
+
+            </label>
+
+
+            <!-- CIVILISATION -->
+
+            <label for="civ-name">
+                Nom de la civilisation
+
+                <input
+                    id="civ-name"
+                    type="text"
+                    value="Nouvelle civilisation"
+                    maxlength="40"
+                >
+
+            </label>
+
+
+            <!-- ADVERSAIRES -->
+
+            <label for="ai-count">
+                Adversaires
+
+                <select id="ai-count">
+
+                    <option value="1">
+                        1 adversaire
+                    </option>
+
+                    <option value="2" selected>
+                        2 adversaires
+                    </option>
+
+                    <option value="3">
+                        3 adversaires
+                    </option>
+
+                </select>
+
+            </label>
+
+
+            <!-- DÉMARRAGE -->
+
+            <button
+                id="start-game"
+                class="primary"
+                type="button"
+            >
+                Initialiser le monde
+            </button>
+
+
+            <!-- STATUT -->
+
+            <small id="loading-status">
+                Python / Pyodide : en attente
+            </small>
+
+        </section>
+
+    </div>
+
+
+    <!-- =====================================================
+         DONNÉES DU JEU
+    ====================================================== -->
+
+    <script src="./data/resources.js"></script>
+
+    <script src="./data/buildings.js"></script>
+
+    <script src="./data/units.js"></script>
+
+    <script src="./data/technologies.js"></script>
+
+    <script src="./data/eras.js"></script>
+
+    <script src="./data/settings.js"></script>
+
+
+    <!-- =====================================================
+         MOTEUR DZ CONQUEST
+         ORDRE DE CHARGEMENT IMPORTANT
+    ====================================================== -->
+
+    <script
+        defer
+        src="./Engine/dz_python_bridge.js"
+    ></script>
+
+    <script
+        defer
+        src="./Engine/dz_world.js"
+    ></script>
+
+    <script
+        defer
+        src="./Engine/dz_controls.js"
+    ></script>
+
+    <script
+        defer
+        src="./Engine/dz_hud.js"
+    ></script>
+
+    <script
+        defer
+        src="./Engine/dz_main.js"
+    ></script>
+
+
+</body>
+
+</html>
+```
