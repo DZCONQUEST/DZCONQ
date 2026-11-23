@@ -12,6 +12,7 @@ DZ.bridge = {
     world: null,
     ready: false,
     initializing: false,
+    game: null,
 
     /* ========================================================
        CONFIGURATION
@@ -72,7 +73,9 @@ DZ.bridge = {
         const status = document.getElementById("loading-status");
 
         const updateStatus = (message) => {
-            if (status) status.textContent = message;
+            if (status) {
+                status.textContent = message;
+            }
         };
 
         try {
@@ -91,6 +94,8 @@ DZ.bridge = {
 
             /* 2. Préparer le système de fichiers */
 
+            updateStatus("Préparation du système Python…");
+
             this.pyodide.FS.mkdirTree(
                 this.PYTHON_ROOT + "/AI"
             );
@@ -101,7 +106,7 @@ DZ.bridge = {
                 'script[src*="dz_python_bridge.js"]'
             );
 
-            if (!bridgeScript) {
+            if (!bridgeScript || !bridgeScript.src) {
                 throw new Error(
                     "Impossible de localiser dz_python_bridge.js."
                 );
@@ -116,7 +121,9 @@ DZ.bridge = {
 
             for (const file of this.files) {
 
-                updateStatus("Chargement Python : " + file);
+                updateStatus(
+                    "Chargement Python : " + file
+                );
 
                 const url = new URL(file, baseURL);
 
@@ -164,27 +171,42 @@ DZ.bridge = {
 
             }
 
-            /* 5. Configurer Python */
+            /* 5. Créer les packages Python */
 
-            updateStatus("Configuration du moteur Python…");
+            updateStatus(
+                "Configuration des packages Python…"
+            );
+
+            this.pyodide.FS.writeFile(
+                this.PYTHON_ROOT + "/__init__.py",
+                ""
+            );
+
+            this.pyodide.FS.writeFile(
+                this.PYTHON_ROOT + "/AI/__init__.py",
+                ""
+            );
+
+            /* 6. Configurer le chemin Python */
 
             this.pyodide.runPython(`
 import sys
 
 if "/home/pyodide" not in sys.path:
     sys.path.insert(0, "/home/pyodide")
-
-if "/home/pyodide/Python" not in sys.path:
-    sys.path.insert(0, "/home/pyodide/Python")
 `);
 
-            /* 6. Importer le moteur principal */
+            /* 7. Importer le moteur principal */
 
-            updateStatus("Initialisation du moteur DZ CONQUEST…");
+            updateStatus(
+                "Initialisation du moteur DZ CONQUEST…"
+            );
 
             this.pyodide.runPython(`
-import main as game
+import Python.main as game
 `);
+
+            this.game = this.pyodide.globals.get("game");
 
             this.ready = true;
 
@@ -201,6 +223,7 @@ import main as game
         } catch (error) {
 
             this.ready = false;
+            this.game = null;
 
             console.error(
                 "DZ CONQUEST - Erreur d'initialisation :",
@@ -245,11 +268,26 @@ import main as game
 
     newGame(name, civ, ai) {
 
+        this.pyodide.globals.set(
+            "_player_name",
+            name
+        );
+
+        this.pyodide.globals.set(
+            "_civ_name",
+            civ
+        );
+
+        this.pyodide.globals.set(
+            "_ai_count",
+            Number(ai)
+        );
+
         this.call(`
 world = game.new_game(
-    ${JSON.stringify(name)},
-    ${JSON.stringify(civ)},
-    ${Number(ai)}
+    _player_name,
+    _civ_name,
+    _ai_count
 )
 `);
 
@@ -273,7 +311,8 @@ world = game.new_game(
             action
         );
 
-        return this.call(`
+        return JSON.parse(
+            this.call(`
 import json
 
 _result = game.command(
@@ -283,7 +322,8 @@ _result = game.command(
 )
 
 json.dumps(_result)
-`);
+`)
+        );
 
     },
 
@@ -360,4 +400,3 @@ world = game.load(_raw_save)
 /* ============================================================
    FIN DU PYTHON BRIDGE
    ============================================================ */
-
