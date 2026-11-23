@@ -1,4 +1,3 @@
-```javascript
 window.DZ = window.DZ || {};
 
 DZ.bridge = {
@@ -169,5 +168,3 @@ import Python.main as game
         return this.snapshot();
     }
 };
-
-```
