@@ -1,13 +1,12 @@
 # ============================================================
 # DZ CONQUEST V3.0
 # BUILDINGS SYSTEM
-# Gestion des bâtiments et des constructions
 # ============================================================
 
 
 # ============================================================
 # IDENTIFIANTS ET JOURNAL
-# Fonctions locales pour éviter l'import circulaire world.py
+# Fonctions locales pour éviter l'import circulaire
 # ============================================================
 
 def new_id(world, prefix):
@@ -30,12 +29,9 @@ def log(world, message):
 # ============================================================
 
 CATALOG = {
-
     "house": {
         "name": "Maison",
-        "cost": {
-            "wood": 80
-        },
+        "cost": {"wood": 80},
         "duration": 8,
         "housing": 2,
         "workforce": 0
@@ -43,33 +39,23 @@ CATALOG = {
 
     "farm": {
         "name": "Ferme",
-        "cost": {
-            "wood": 120
-        },
+        "cost": {"wood": 120},
         "duration": 12,
-        "production": {
-            "food": 5
-        },
+        "production": {"food": 5},
         "workforce": 1
     },
 
     "lumber": {
         "name": "Scierie",
-        "cost": {
-            "wood": 100
-        },
+        "cost": {"wood": 100},
         "duration": 10,
-        "production": {
-            "wood": 4
-        },
+        "production": {"wood": 4},
         "workforce": 1
     },
 
     "mine": {
         "name": "Mine",
-        "cost": {
-            "wood": 140
-        },
+        "cost": {"wood": 140},
         "duration": 14,
         "production": {
             "iron": 2,
@@ -87,7 +73,6 @@ CATALOG = {
         "duration": 30,
         "workforce": 0
     }
-
 }
 
 
@@ -129,13 +114,10 @@ def start_building(world, cid, city_id, kind, x, z):
             }
 
     # Vérification des travailleurs
-    available_workers = (
+    if (
         civ["workers"] - civ["assigned_workers"]
-    )
-
-    required_workers = spec.get("workforce", 0)
-
-    if available_workers < required_workers:
+        < spec.get("workforce", 0)
+    ):
 
         return {
             "ok": False,
@@ -154,36 +136,30 @@ def start_building(world, cid, city_id, kind, x, z):
 
     # Déduction des ressources
     for resource, cost in spec["cost"].items():
-
         civ["resources"][resource] -= cost
 
     # Création du bâtiment
     building_id = new_id(world, "building")
 
     building = {
-
         "id": building_id,
         "type": kind,
         "name": spec["name"],
         "owner_id": cid,
         "city_id": city_id,
-
         "x": float(x),
         "z": float(z),
-
         "progress": 0,
         "duration": spec["duration"],
-
         "complete": False,
         "level": 1
-
     }
 
     world["buildings"][building_id] = building
 
     city["building_ids"].append(building_id)
 
-    civ["assigned_workers"] += required_workers
+    civ["assigned_workers"] += spec.get("workforce", 0)
 
     log(
         world,
@@ -191,14 +167,9 @@ def start_building(world, cid, city_id, kind, x, z):
     )
 
     return {
-
         "ok": True,
         "building": building,
-
-        "message": (
-            f"Construction de {spec['name']} lancée."
-        )
-
+        "message": f"Construction de {spec['name']} lancée."
     }
 
 
@@ -213,14 +184,12 @@ def update_construction(world, dt):
         if building["complete"]:
             continue
 
-        # Progression de la construction
         building["progress"] = min(
             1,
             building["progress"] +
             dt / max(1, building["duration"])
         )
 
-        # Construction terminée
         if building["progress"] >= 1:
 
             building["complete"] = True
@@ -231,7 +200,6 @@ def update_construction(world, dt):
 
             spec = CATALOG[building["type"]]
 
-            # Augmentation de la capacité de logement
             if building["type"] == "house":
 
                 housing = spec.get("housing", 0)
