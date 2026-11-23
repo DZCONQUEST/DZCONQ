@@ -1,289 +1,39 @@
-```javascript
-/* ============================================================
-   DZ CONQUEST V3.0
-   MAIN ENGINE
-   ============================================================ */
-
 window.DZ = window.DZ || {};
 
-DZ.main = {
+DZ.init = async function () {
+    const status = document.getElementById("loading-status");
 
-    started: false,
-    paused: false,
-
-    /* ========================================================
-       INITIALISATION
-       ======================================================== */
-
-    async init() {
-
-        console.log("DZ CONQUEST : démarrage...");
-
-        try {
-
-            // Vérifier le bridge Python
-
-            if (!window.DZ || !window.DZ.bridge) {
-                throw new Error(
-                    "DZ.bridge introuvable. Vérifier dz_python_bridge.js."
-                );
-            }
-
-            if (typeof window.DZ.bridge.init !== "function") {
-                throw new Error(
-                    "DZ.bridge.init n'est pas une fonction."
-                );
-            }
-
-            // Initialiser Python
-
-            await window.DZ.bridge.init();
-
-            console.log("Python opérationnel.");
-
-            // Préparer les événements
-
-            this.bindEvents();
-
-            return true;
-
-        } catch (error) {
-
-            console.error(
-                "Erreur initialisation DZ CONQUEST :",
-                error
-            );
-
-            const status = document.getElementById(
-                "loading-status"
-            );
-
-            if (status) {
-                status.textContent =
-                    "Erreur Python : " + error.message;
-            }
-
-            return false;
-        }
-    },
-
-    /* ========================================================
-       ÉVÉNEMENTS
-       ======================================================== */
-
-    bindEvents() {
-
-        const startButton = document.getElementById(
-            "start-game"
-        );
-
-        if (startButton) {
-
-            startButton.addEventListener(
-                "click",
-                () => this.startGame()
-            );
-
+    try {
+        if (!DZ.bridge || typeof DZ.bridge.init !== "function") {
+            throw new Error("dz_python_bridge.js non chargé.");
         }
 
-        const pauseButton = document.getElementById("pause");
+        status.textContent = "Initialisation de Pyodide…";
 
-        if (pauseButton) {
+        await DZ.bridge.init();
 
-            pauseButton.addEventListener(
-                "click",
-                () => this.togglePause()
-            );
+        status.textContent = "Python opérationnel.";
 
+        console.log("DZ CONQUEST : Python opérationnel.");
+
+        if (DZ.world && typeof DZ.world.init === "function") {
+            DZ.world.init();
         }
 
-        const saveButton = document.getElementById("save");
-
-        if (saveButton) {
-
-            saveButton.addEventListener(
-                "click",
-                () => this.saveGame()
-            );
-
+        if (DZ.controls && typeof DZ.controls.init === "function") {
+            DZ.controls.init();
         }
 
-        const loadButton = document.getElementById("load");
-
-        if (loadButton) {
-
-            loadButton.addEventListener(
-                "click",
-                () => this.loadGame()
-            );
-
+        if (DZ.hud && typeof DZ.hud.init === "function") {
+            DZ.hud.init();
         }
 
-    },
-
-    /* ========================================================
-       NOUVELLE PARTIE
-       ======================================================== */
-
-    startGame() {
-
-        if (!DZ.bridge.ready) {
-
-            alert(
-                "Le moteur Python n'est pas encore opérationnel."
-            );
-
-            return;
-        }
-
-        try {
-
-            const playerName =
-                document.getElementById("player-name").value;
-
-            const civName =
-                document.getElementById("civ-name").value;
-
-            const aiCount =
-                Number(
-                    document.getElementById("ai-count").value
-                );
-
-            const world = DZ.bridge.newGame(
-                playerName,
-                civName,
-                aiCount
-            );
-
-            DZ.bridge.world = world;
-
-            this.started = true;
-
-            const overlay = document.getElementById(
-                "start-overlay"
-            );
-
-            if (overlay) {
-                overlay.style.display = "none";
-            }
-
-            if (DZ.hud && typeof DZ.hud.update === "function") {
-                DZ.hud.update(world);
-            }
-
-            console.log("Nouvelle partie créée.");
-
-        } catch (error) {
-
-            console.error("Erreur nouvelle partie :", error);
-
-            alert("Erreur : " + error.message);
-
-        }
-
-    },
-
-    /* ========================================================
-       PAUSE
-       ======================================================== */
-
-    togglePause() {
-
-        this.paused = !this.paused;
-
-        const button = document.getElementById("pause");
-
-        if (button) {
-            button.textContent = this.paused ? "▶" : "Ⅱ";
-        }
-
-    },
-
-    /* ========================================================
-       SAUVEGARDE
-       ======================================================== */
-
-    saveGame() {
-
-        try {
-
-            if (!this.started) return;
-
-            const save = DZ.bridge.save();
-
-            localStorage.setItem(
-                "DZ_CONQUEST_SAVE",
-                save
-            );
-
-            alert("Partie sauvegardée.");
-
-        } catch (error) {
-
-            console.error(error);
-
-        }
-
-    },
-
-    /* ========================================================
-       CHARGEMENT
-       ======================================================== */
-
-    loadGame() {
-
-        try {
-
-            const save = localStorage.getItem(
-                "DZ_CONQUEST_SAVE"
-            );
-
-            if (!save) {
-                alert("Aucune sauvegarde disponible.");
-                return;
-            }
-
-            const world = DZ.bridge.load(save);
-
-            DZ.bridge.world = world;
-
-            this.started = true;
-
-            const overlay = document.getElementById(
-                "start-overlay"
-            );
-
-            if (overlay) {
-                overlay.style.display = "none";
-            }
-
-            if (DZ.hud && typeof DZ.hud.update === "function") {
-                DZ.hud.update(world);
-            }
-
-        } catch (error) {
-
-            console.error("Erreur chargement :", error);
-
-            alert(error.message);
-
-        }
-
+    } catch (error) {
+        console.error("DZ INIT ERROR:", error);
+        status.textContent = "Erreur Python : " + error.message;
     }
-
 };
 
-
-/* ============================================================
-   DÉMARRAGE AUTOMATIQUE
-   ============================================================ */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
-
-        DZ.main.init();
-
-    }
-);
-```
+document.addEventListener("DOMContentLoaded", function () {
+    DZ.init();
+});
