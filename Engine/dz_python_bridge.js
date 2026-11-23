@@ -15,7 +15,6 @@ DZ.bridge = {
 
             const files = [
                 "__init__.py",
-                "main.py",
                 "world.py",
                 "players.py",
                 "cities.py",
