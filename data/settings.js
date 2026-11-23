@@ -1,16 +1,1 @@
-/**
- * data/settings.js
- * Réglages généraux du moteur, caméra et sauvegarde.
- */
-(function () {
-  "use strict";
-  window.DZ = window.DZ || {};
-
-  window.DZ.SETTINGS = {
-    saveKey: "dz_conquest_v13_save",
-    cameraMinDist: 16,
-    cameraMaxDist: 460,
-    defaultVillageName: "Cirta & Atlas",
-    aiTickInterval: 4.5
-  };
-})();
+window.DZ_DATA=window.DZ_DATA||{};window.DZ_DATA.settings={tickSeconds:1,autosaveSeconds:60,worldSize:1800,initialResources:{gold:1000,food:1000,wood:1000,iron:1000}};

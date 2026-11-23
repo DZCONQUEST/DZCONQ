@@ -1,319 +1,45 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <title>DZ CONQUEST — Monde Ouvert 3D</title>
-
-
-  <link rel="stylesheet" href="styles/dz_base.css" />
-  <link rel="stylesheet" href="styles/dz_hud.css" />
-  <link rel="stylesheet" href="styles/dz_dock.css" />
-  <link rel="stylesheet" href="styles/dz_modals.css" />
-  <link rel="stylesheet" href="styles/dz_responsive.css" />
-
-  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DZ CONQUEST V3.0 — Monde ouvert 3D</title>
+<link rel="stylesheet" href="styles/dz_base.css">
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
 </head>
-
 <body>
-
-  <div id="scene-container"></div>
-
-  <!-- BARRE SUPÉRIEURE -->
-  <header id="top-bar">
-
-    <div id="brand-badge">
-      <div id="dz-flag" aria-hidden="true">
-        <div class="flag-green"></div>
-        <div class="flag-white">☪</div>
-      </div>
-
-      <div>
-        <div class="brand-name">DZ CONQUEST</div>
-        <div class="brand-sub">Monde Ouvert 3D</div>
-      </div>
-    </div>
-
-    <!-- RESSOURCES -->
-    <div id="res-strip">
-
-      <div class="res-pill">
-        <span class="res-icon">🪙</span>
-        <div class="res-meta">
-          <strong id="res-gold">1000</strong>
-          <span id="rate-gold">+0.0/s</span>
-        </div>
-      </div>
-
-      <div class="res-pill">
-        <span class="res-icon">🌾</span>
-        <div class="res-meta">
-          <strong id="res-food">1000</strong>
-          <span id="rate-food">+0.0/s</span>
-        </div>
-      </div>
-
-      <div class="res-pill">
-        <span class="res-icon">🌲</span>
-        <div class="res-meta">
-          <strong id="res-wood">1000</strong>
-          <span id="rate-wood">+0.0/s</span>
-        </div>
-      </div>
-
-      <div class="res-pill">
-        <span class="res-icon">⛏️</span>
-        <div class="res-meta">
-          <strong id="res-iron">1000</strong>
-          <span id="rate-iron">+0.0/s</span>
-        </div>
-      </div>
-
-      <div class="res-pill">
-        <span class="res-icon">🪨</span>
-        <div class="res-meta">
-          <strong id="res-stone">400</strong>
-          <span id="rate-stone">+0.0/s</span>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- POPULATION ET ÉPOQUE -->
-    <div id="pop-age-strip">
-
-      <div class="pop-box">
-        <span>👥</span>
-        <strong id="pop-current">0</strong>
-        <span>/</span>
-        <span id="pop-max">2</span>
-      </div>
-
-      <div class="age-box">
-        <span>🏛️</span>
-        <strong id="era-label">Âge de Numidie</strong>
-      </div>
-
-      <button id="btn-open-village" class="icon-btn" title="Dar El Jamaa">🏛️</button>
-      <button id="btn-open-research" class="icon-btn" title="Table de recherche">📜</button>
-      <button id="btn-save" class="icon-btn" title="Sauvegarder">💾</button>
-      <button id="btn-load" class="icon-btn" title="Charger">📂</button>
-      <button id="btn-pause" class="icon-btn" title="Pause / Reprise">⏸</button>
-
-    </div>
-  </header>
-
-  <!-- OBJECTIFS -->
-  <aside id="objectives-panel" class="gold-panel">
-    <div class="panel-title">
-      <span>Objectifs — Numidie</span>
-      <span>🗺️</span>
-    </div>
-
-    <ul id="objectives-list"></ul>
-  </aside>
-
-  <!-- MINICARTE -->
-  <aside id="minimap-panel" class="gold-panel">
-    <div class="minimap-header">
-      <span>Monde DZ</span>
-      <span>Terrain</span>
-    </div>
-
-    <canvas id="minimap-canvas" width="176" height="146"></canvas>
-  </aside>
-
-  <!-- INSPECTEUR -->
-  <aside id="inspector-panel" class="gold-panel hidden">
-
-    <div class="panel-title">
-      <span id="inspector-title">Sélection</span>
-    </div>
-
-    <div id="inspector-thumb" class="inspector-thumb"></div>
-    <div id="inspector-stats" class="inspector-stats"></div>
-    <div id="inspector-actions" class="inspector-actions"></div>
-
-  </aside>
-
-  <!-- MENU CONSTRUCTION -->
-  <div
-    id="builder-choice-popover"
-    class="gold-panel hidden"
-    role="dialog"
-    aria-label="Choisir une construction"
-  >
-
-    <div class="popover-header">
-      <span>🔨 Choisir une construction</span>
-
-      <button
-        type="button"
-        id="close-builder-popover"
-        class="popover-close"
-        title="Fermer"
-      >✕</button>
-    </div>
-
-    <div id="builder-popover-sub" class="popover-sub">
-      Cliquez sur un bâtiment, puis choisissez son emplacement sur le terrain.
-    </div>
-
-    <div id="builder-popover-list" class="builder-popover-list"></div>
-
+<div id="scene-container"></div>
+<header id="topbar">
+  <div class="brand"><span class="flag">◐</span><div><b>DZ CONQUEST</b><small>V3.0 · MONDE OUVERT</small></div></div>
+  <div class="resources">
+    <div>🪙 <b id="gold">1000</b><small>Or</small></div><div>🌾 <b id="food">1000</b><small>Nourriture</small></div>
+    <div>🌲 <b id="wood">1000</b><small>Bois</small></div><div>⛏️ <b id="iron">1000</b><small>Fer</small></div>
   </div>
-
-  <!-- NOTIFICATIONS -->
-  <div id="status-toast" class="gold-panel hidden"></div>
-
- 
-
-  <!-- MODALE DE DÉMARRAGE -->
-  <div id="start-modal" class="modal-backdrop">
-
-    <div class="modal-card gold-panel">
-
-      <h2>DZ CONQUEST — Âge de Numidie</h2>
-
-      <p>
-        Choisissez une wilaya de départ.
-        Vous commencez sur un grand terrain carré, plat et vide,
-        avec <strong>1 Homme</strong> et <strong>1 Femme</strong>.
-      </p>
-
-      <div id="start-wilaya-grid" class="wilaya-grid"></div>
-
-      <div class="modal-close-row">
-
-        <button id="start-load-btn" class="gold-btn">
-          Charger une sauvegarde
-        </button>
-
-        <button id="start-any-spot-btn" class="gold-btn accent">
-          Choisir librement sur le terrain
-        </button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-  <!-- MODALE BÂTIMENT -->
-  <div id="building-modal" class="modal-backdrop hidden">
-
-    <div class="modal-card gold-panel">
-
-      <h2 id="bmodal-title">Bâtiment</h2>
-
-      <div id="bmodal-body"></div>
-
-      <div class="modal-close-row">
-        <button class="gold-btn" data-close-modal="building-modal">
-          Fermer
-        </button>
-      </div>
-
-    </div>
-
-  </div>
-
-  <!-- MODALE DAR EL JAMAA -->
-  <div id="village-modal" class="modal-backdrop hidden">
-
-    <div class="modal-card gold-panel">
-
-      <h2>🏛️ Dar El Jamaa — Gestion du Village</h2>
-
-      <div id="vmodal-body"></div>
-
-      <div class="modal-close-row">
-        <button class="gold-btn" data-close-modal="village-modal">
-          Fermer
-        </button>
-      </div>
-
-    </div>
-
-  </div>
-
-  <!-- MODALE RECHERCHE -->
-  <div id="research-modal" class="modal-backdrop hidden">
-
-    <div class="modal-card gold-panel">
-
-      <h2>📜 Table de Recherche (Numidie • Vandales • Romain • Byzantin)</h2>
-
-      <div id="rmodal-body"></div>
-
-      <div class="modal-close-row">
-        <button class="gold-btn" data-close-modal="research-modal">
-          Fermer
-        </button>
-      </div>
-
-    </div>
-
-  </div>
-
-  <!-- ERREUR WEBGL -->
-  <div id="fatal-error" class="fatal-overlay hidden">
-
-    <div class="fatal-box gold-panel">
-
-      <h2>Initialisation 3D impossible</h2>
-
-      <p>
-        Vérifiez l'accès réseau aux scripts Three.js
-        ou l'activation de WebGL dans votre navigateur.
-      </p>
-
-    </div>
-
-  </div>
-
-  <!-- ============================== -->
-  <!-- DONNÉES DU JEU -->
-  <!-- ============================== -->
-
-  <script src="data/algeria_map.js"></script>
-  <script src="data/terrain.js"></script>
-  <script src="data/resources.js"></script>
-  <script src="data/buildings.js"></script>
-  <script src="data/units.js"></script>
-  <script src="data/technologies.js"></script>
-  <script src="data/eras.js"></script>
-  <script src="data/infrastructure.js"></script>
-  <script src="data/population.js"></script>
-  <script src="data/settings.js"></script>
-
-  <!-- ============================== -->
-  <!-- MOTEUR DU JEU -->
-  <!-- ============================== -->
-
-<script src="Engine/dz_core.js?v=20261123-2"></script>
-  <script src="Engine/dz_terrain.js"></script>
-  <script src="Engine/dz_population.js"></script>
-  <script src="Engine/dz_workers.js"></script>
-  <script src="Engine/dz_resources.js"></script>
-  <script src="Engine/dz_economy.js"></script>
-  <script src="Engine/dz_storage.js"></script>
-  <script src="Engine/dz_transport.js"></script>
-  <script src="Engine/dz_buildings.js"></script>
-  <script src="Engine/dz_building_ui.js"></script>
-  <script src="Engine/dz_village.js"></script>
-  <script src="Engine/dz_research.js"></script>
-  <script src="Engine/dz_units.js"></script>
-  <script src="Engine/dz_combat.js"></script>
-  <script src="Engine/dz_conquest.js"></script>
-  <script src="Engine/dz_ai.js"></script>
-  <script src="Engine/dz_diplomacy.js"></script>
-  <script src="Engine/dz_save.js"></script>
-  <script src="Engine/dz_hud.js"></script>
-  <script src="Engine/dz_main.js"></script>
-
-</body>
-</html>
+  <div class="right"><span id="population">Population : 2 / 2</span><button id="pause">Ⅱ</button><button id="save">Sauvegarder</button><button id="load">Charger</button></div>
+</header>
+<aside id="left-panel" class="panel">
+  <h3>Votre civilisation</h3><div id="civilization">En attente du lancement…</div>
+  <hr><h3>Construction</h3><div id="buildings" class="button-grid"></div>
+  <hr><h3>Armée</h3><button id="recruit">Recruter 1 soldat — 100 or / 50 nourriture</button>
+  <button id="found-city">Fonder une ville</button>
+  <hr><h3>Adversaires</h3><div id="opponents">Chargement de la simulation…</div>
+</aside>
+<aside id="right-panel" class="panel">
+  <h3>Inspecteur</h3><div id="inspector">Cliquez sur le terrain ou un élément du monde.</div>
+  <hr><h3>Journal du monde</h3><div id="log"></div>
+</aside>
+<div id="bottom-hint">Clic gauche : sélectionner / choisir un emplacement · Molette : zoom · Clic droit : déplacer la caméra</div>
+<div id="start-overlay">
+ <section class="start-card">
+  <div class="eyebrow">STRATÉGIE · GESTION · CONQUÊTE</div><h1>DZ CONQUEST <em>V3.0</em></h1>
+  <p>Un monde ouvert inspiré de la géographie algérienne. Fondez votre civilisation, développez votre économie et affrontez des adversaires autonomes.</p>
+  <label>Nom du joueur<input id="player-name" value="Joueur"></label>
+  <label>Nom de la civilisation<input id="civ-name" value="Nouvelle civilisation"></label>
+  <label>Adversaires<select id="ai-count"><option value="1">1 adversaire</option><option value="2" selected>2 adversaires</option><option value="3">3 adversaires</option></select></label>
+  <button id="start-game" class="primary">Initialiser le monde</button>
+  <small id="loading-status">Python / Pyodide : en attente</small>
+ </section>
+</div>
+<script src="data/resources.js"></script><script src="data/buildings.js"></script><script src="data/units.js"></script><script src="data/technologies.js"></script><script src="data/eras.js"></script><script src="data/settings.js"></script>
+<script src="Engine/dz_python_bridge.js"></script><script src="Engine/dz_world.js"></script><script src="Engine/dz_controls.js"></script><script src="Engine/dz_hud.js"></script><script src="Engine/dz_main.js"></script>
+</body></html>

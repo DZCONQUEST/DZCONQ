@@ -1,0 +1,179 @@
+#bottom-dock {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 20;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+#center-controls {
+  flex: 1;
+  padding: 8px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+#mission-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#active-unit-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd966;
+  background: rgba(212, 175, 55, 0.14);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.order-hint {
+  font-size: 11px;
+  color: #d8cba8;
+}
+
+.panel-subtitle {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #d6c395;
+}
+
+#build-grid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(66px, 1fr));
+  gap: 5px;
+  overflow-x: auto;
+}
+
+.build-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 5px 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 7px;
+  color: #f6ebd1;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.build-card:hover:not(.locked) {
+  border-color: #ffd966;
+  background: rgba(212, 175, 55, 0.18);
+}
+
+.build-card.active {
+  border-color: #34d399;
+  background: rgba(16, 185, 129, 0.22);
+}
+
+.build-card.locked {
+  opacity: 0.42;
+  border-style: dashed;
+}
+
+.b-ico { font-size: 16px; line-height: 1.1; }
+.b-name { font-size: 10px; font-weight: 600; white-space: nowrap; }
+
+#camera-legend {
+  width: 176px;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #e4d7b7;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Petite fenêtre flottante au-dessus du dock quand on clique sur le marteau de l'habitant */
+#builder-choice-popover {
+  position: fixed;
+  bottom: 164px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, 92vw);
+  z-index: 30;
+  padding: 12px 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+}
+
+.popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #ffd966;
+  margin-bottom: 4px;
+}
+
+.popover-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: #f6ebd1;
+  border-radius: 6px;
+  padding: 2px 7px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.popover-sub {
+  font-size: 11.5px;
+  color: #dfd2b2;
+  margin-bottom: 10px;
+}
+
+.builder-popover-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.popover-build-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: #f7eed6;
+  cursor: pointer;
+  text-align: left;
+  font-size: 11.5px;
+}
+
+.popover-build-btn:hover:not(:disabled) {
+  border-color: #34d399;
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.popover-build-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.popover-build-cost {
+  font-size: 10px;
+  color: #d6c395;
+}

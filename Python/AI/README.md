@@ -1,0 +1,1 @@
+Modules d'IA indépendants : décision, économie, construction, expansion, militaire, diplomatie, exploration, stratégie et difficulté.\n

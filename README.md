@@ -1,39 +1,35 @@
-# DZ CONQUEST — Version 2.0
+# DZ CONQUEST V3.0
 
-Jeu de stratégie territorial 3D jouable dans un navigateur, construit sur Three.js et JavaScript. Le projet conserve la carte et le moteur 3D de la version fournie, puis ajoute une couche de systèmes stratégiques.
+Base de développement V3.0 issue de l'archive V2.0 fournie. Le projet adopte une architecture hybride :
+- **Python / Pyodide** : état du monde, économie, population, villes, bâtiments, armées, combats, diplomatie, commerce, conquête et IA.
+- **JavaScript / Three.js** : rendu 3D, caméra, interactions et interface.
 
-## Démarrage
+## Lancement
+1. Décompresser le dossier.
+2. Ouvrir le dossier avec un serveur HTTP statique (GitHub Pages fonctionne).
+3. Ouvrir `index.html`. Une connexion Internet est requise pour charger Three.js et Pyodide depuis leurs CDN.
+4. Cliquer sur **Nouvelle partie**, choisir un nom et cliquer sur un emplacement de terrain pour établir le camp initial.
 
-- Hébergement statique compatible GitHub Pages.
-- Ouvrir `index.html` depuis un serveur web statique (GitHub Pages recommandé).
-- Aucune installation de logiciel n'est requise sur le PC.
-- Three.js et ses contrôles sont chargés depuis un CDN : une connexion Internet est nécessaire.
+Un navigateur moderne avec WebGL est recommandé. L'exécution Python se fait côté navigateur ; aucun serveur Python local n'est requis.
 
-## Contenu de la version 2.0
+## État réel de cette livraison
+Cette archive est une **base V3.0 jouable et extensible**, pas la réalisation exhaustive de chaque fonction décrite dans le cahier des charges. Sont opérationnels dans cette base : initialisation du monde, deux personnages visuels, ressources initiales, simulation économique simple, travailleurs, construction de maisons/fermes/scieries/mines/palais, population et capacité de logement, recrutement, déplacement d'armée, résolution de combat simplifiée, diplomatie de base, sauvegarde locale et adversaires IA autonomes (économie, construction, expansion et militaire élémentaires).
 
-- Conservation de la carte algérienne, du terrain, des ressources, des unités, bâtiments et systèmes existants.
-- Interface stratégique complémentaire avec dock inférieur et fenêtres redessinées.
-- Marché : achat et vente de ressources avec prix distincts et transactions par lots de 100.
-- Diplomatie : postures de paix, commerce, défense et mobilisation ; pacte de non-agression payant.
-- Conseil du royaume : réglages de fiscalité, rations et priorité de travail.
-- Commandement militaire : choix de formations (ligne, défensive, colonne, coin).
-- Chroniques : journal local des événements et frise des âges définis dans `data/eras.js`.
-- Paramètres stratégiques sauvegardés localement dans le navigateur et associés à la sauvegarde existante.
-- Mise à jour visuelle : panneaux sombres, bordures dorées, transparence, dock responsive et fenêtres modales.
+Les systèmes avancés (géographie algérienne haute fidélité, pathfinding complet, animation de personnages détaillée, arbre technologique exhaustif, marché dynamique complet, diplomatie conditionnelle avancée, événements systémiques, optimisation multi-worker et équilibrage final) restent à développer.
 
-## Architecture
+## Structure
+- `Python/` : modules métier indépendants.
+- `Engine/` : moteur Three.js et pont Python/JavaScript.
+- `data/` : catalogues de données.
+- `styles/` : interface.
+- `assets/` : ressources graphiques reprises de V2.
+- `legacy_v2/` : copie de référence des anciens fichiers V2, non chargée par V3.
 
-- `Engine/` : moteur du jeu et systèmes de stratégie.
-- `data/` : données de la carte, ressources, bâtiments, unités, technologies et âges.
-- `styles/` : styles de l'interface.
-- `assets/` : relief de l'Algérie.
-- `Engine/dz_expansion_v2.js` : nouveaux systèmes de stratégie de la version 2.0.
-- `styles/dz_v2.css` : nouvelle couche graphique.
+## Principes V3
+- Aucune wilaya ni division administrative n'est utilisée comme territoire de gameplay.
+- Les positions de départ sont choisies librement sur les zones constructibles.
+- Le contrôle territorial est dynamique et rattaché aux civilisations.
+- Python est la source de vérité des règles et des calculs.
+- Le joueur et l'IA utilisent les mêmes règles fondamentales.
 
-## Notes de périmètre
-
-Cette version enrichit le jeu avec des mécaniques inspirées des jeux de stratégie historiques (gestion, commerce, diplomatie, commandement et progression par âges). Elle ne reproduit pas les contenus propriétaires, campagnes, civilisations, cartes, unités ou interfaces complètes d'Age of Empires, 0 A.D. ou Civilization. Les systèmes multijoueur, serveur persistant, diplomatie avec joueurs réels et IA stratégique avancée ne sont pas inclus dans cette édition navigateur.
-
-## Version
-
-`2.0.0` — 23 novembre 2026.
+Version `3.0.0` — 23 novembre 2026.

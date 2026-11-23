@@ -1,0 +1,70 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  background: #1b242a;
+  color: #f4ead2;
+  user-select: none;
+}
+
+#scene-container {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.gold-panel {
+  background: linear-gradient(180deg, rgba(31, 25, 18, 0.92), rgba(18, 15, 11, 0.95));
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 232, 163, 0.22);
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+}
+
+.gold-btn {
+  background: linear-gradient(180deg, #4b391a, #2c200d);
+  border: 1px solid rgba(226, 188, 74, 0.65);
+  color: #fff2cc;
+  padding: 7px 11px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.15s ease, border-color 0.15s ease;
+}
+
+.gold-btn:hover:not(:disabled) {
+  filter: brightness(1.15);
+  border-color: #ffd966;
+  transform: translateY(-1px);
+}
+
+.gold-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.gold-btn.danger {
+  background: linear-gradient(180deg, #5a1c1c, #310e0e);
+  border-color: rgba(248, 113, 113, 0.6);
+  color: #fecaca;
+}
+
+.gold-btn.accent {
+  background: linear-gradient(180deg, #1b4d3e, #102e25);
+  border-color: rgba(52, 211, 153, 0.65);
+  color: #d1fae5;
+}
+
+.hidden {
+  display: none !important;
+}
