@@ -1,7 +1,7 @@
 /* ============================================================
    DZ CONQUEST V3.0
    PYTHON BRIDGE
-   Liaison entre JavaScript, Three.js et Python / Pyodide
+   Liaison JavaScript / Three.js / Python / Pyodide
    ============================================================ */
 
 window.DZ = window.DZ || {};
@@ -14,11 +14,11 @@ DZ.bridge = {
     initializing: false,
     game: null,
 
-    /* ========================================================
-       CONFIGURATION
-       ======================================================== */
-
     PYTHON_ROOT: "/home/pyodide/Python",
+
+    /* ========================================================
+       MODULES PYTHON
+       ======================================================== */
 
     files: [
         "main.py",
@@ -56,13 +56,16 @@ DZ.bridge = {
         "AI/ai_difficulty.py"
     ],
 
+
     /* ========================================================
        INITIALISATION
        ======================================================== */
 
     async init() {
 
-        if (this.ready) return true;
+        if (this.ready) {
+            return true;
+        }
 
         if (this.initializing) {
             throw new Error("Initialisation déjà en cours.");
@@ -80,27 +83,27 @@ DZ.bridge = {
 
         try {
 
-            /* 1. Vérifier Pyodide */
+            // 1. Vérifier Pyodide
 
-            updateStatus("Chargement de Pyodide…");
+            updateStatus("Chargement de Pyodide...");
 
             if (typeof loadPyodide !== "function") {
                 throw new Error(
-                    "Pyodide n'est pas chargé. Vérifie index.html."
+                    "Pyodide introuvable. Vérifiez index.html."
                 );
             }
 
             this.pyodide = await loadPyodide();
 
-            /* 2. Préparer le système de fichiers */
+            // 2. Préparer les dossiers
 
-            updateStatus("Préparation du système Python…");
+            updateStatus("Préparation du système Python...");
 
             this.pyodide.FS.mkdirTree(
                 this.PYTHON_ROOT + "/AI"
             );
 
-            /* 3. Déterminer le chemin du dossier Python */
+            // 3. Localiser le dossier Python
 
             const bridgeScript = document.querySelector(
                 'script[src*="dz_python_bridge.js"]'
@@ -117,7 +120,7 @@ DZ.bridge = {
                 bridgeScript.src
             );
 
-            /* 4. Télécharger les modules Python */
+            // 4. Télécharger les modules
 
             for (const file of this.files) {
 
@@ -127,29 +130,18 @@ DZ.bridge = {
 
                 const url = new URL(file, baseURL);
 
-                let response;
-
-                try {
-
-                    response = await fetch(url.href);
-
-                } catch (error) {
-
-                    throw new Error(
-                        "Échec réseau pendant le chargement de " +
-                        file + " : " + error.message
-                    );
-
-                }
+                const response = await fetch(
+                    url.href + "?v=3.0"
+                );
 
                 if (!response.ok) {
-
                     throw new Error(
-                        "Fichier Python introuvable : " +
+                        "Fichier introuvable : " +
                         file +
-                        " (HTTP " + response.status + ")"
+                        " (HTTP " +
+                        response.status +
+                        ")"
                     );
-
                 }
 
                 const content = await response.text();
@@ -168,14 +160,11 @@ DZ.bridge = {
                     destination,
                     content
                 );
-
             }
 
-            /* 5. Créer les packages Python */
+            // 5. Créer les packages Python
 
-            updateStatus(
-                "Configuration des packages Python…"
-            );
+            updateStatus("Configuration des packages...");
 
             this.pyodide.FS.writeFile(
                 this.PYTHON_ROOT + "/__init__.py",
@@ -187,7 +176,7 @@ DZ.bridge = {
                 ""
             );
 
-            /* 6. Configurer le chemin Python */
+            // 6. Configurer sys.path
 
             this.pyodide.runPython(`
 import sys
@@ -196,10 +185,10 @@ if "/home/pyodide" not in sys.path:
     sys.path.insert(0, "/home/pyodide")
 `);
 
-            /* 7. Importer le moteur principal */
+            // 7. Importer le moteur
 
             updateStatus(
-                "Initialisation du moteur DZ CONQUEST…"
+                "Importation du moteur DZ CONQUEST..."
             );
 
             this.pyodide.runPython(`
@@ -210,9 +199,7 @@ import Python.main as game
 
             this.ready = true;
 
-            updateStatus(
-                "Python opérationnel · choisissez votre point de départ."
-            );
+            updateStatus("Python opérationnel.");
 
             console.log(
                 "DZ CONQUEST V3.0 : moteur Python opérationnel."
@@ -224,9 +211,10 @@ import Python.main as game
 
             this.ready = false;
             this.game = null;
+            this.world = null;
 
             console.error(
-                "DZ CONQUEST - Erreur d'initialisation :",
+                "DZ CONQUEST - Erreur Python :",
                 error
             );
 
@@ -241,46 +229,56 @@ import Python.main as game
             this.initializing = false;
 
         }
-
     },
 
+
     /* ========================================================
-       EXECUTION PYTHON
+       VÉRIFICATION DU MOTEUR
+       ======================================================== */
+
+    checkReady() {
+
+        if (!this.ready || !this.pyodide) {
+            throw new Error(
+                "Le moteur Python n'est pas opérationnel."
+            );
+        }
+    },
+
+
+    /* ========================================================
+       EXÉCUTION PYTHON
        ======================================================== */
 
     call(code) {
 
-        if (!this.ready || !this.pyodide) {
-
-            throw new Error(
-                "Le moteur Python n'est pas initialisé."
-            );
-
-        }
+        this.checkReady();
 
         return this.pyodide.runPython(code);
-
     },
+
 
     /* ========================================================
        NOUVELLE PARTIE
        ======================================================== */
 
-    newGame(name, civ, ai) {
+    newGame(name = "Joueur", civ = "Nouvelle civilisation", ai = 2) {
+
+        this.checkReady();
 
         this.pyodide.globals.set(
             "_player_name",
-            name
+            String(name)
         );
 
         this.pyodide.globals.set(
             "_civ_name",
-            civ
+            String(civ)
         );
 
         this.pyodide.globals.set(
             "_ai_count",
-            Number(ai)
+            Math.max(0, Math.min(5, Number(ai) || 0))
         );
 
         this.call(`
@@ -291,9 +289,15 @@ world = game.new_game(
 )
 `);
 
-        return this.snapshot();
+        this.world = true;
 
+        console.log(
+            "DZ CONQUEST : nouvelle partie créée."
+        );
+
+        return this.snapshot();
     },
+
 
     /* ========================================================
        COMMANDES DU JOUEUR
@@ -301,19 +305,28 @@ world = game.new_game(
 
     command(action, payload = {}) {
 
-        this.pyodide.globals.set(
-            "_payload",
-            payload
-        );
+        this.checkReady();
+
+        if (!this.world) {
+            throw new Error(
+                "Aucune partie n'a encore été créée."
+            );
+        }
 
         this.pyodide.globals.set(
             "_action",
-            action
+            String(action)
         );
 
-        return JSON.parse(
-            this.call(`
+        this.pyodide.globals.set(
+            "_payload_json",
+            JSON.stringify(payload)
+        );
+
+        const result = this.call(`
 import json
+
+_payload = json.loads(_payload_json)
 
 _result = game.command(
     world,
@@ -322,20 +335,27 @@ _result = game.command(
 )
 
 json.dumps(_result)
-`)
-        );
+`);
 
+        return JSON.parse(result);
     },
+
 
     /* ========================================================
        SIMULATION
        ======================================================== */
 
-    tick(dt) {
+    tick(dt = 1) {
+
+        this.checkReady();
+
+        if (!this.world) {
+            return null;
+        }
 
         this.pyodide.globals.set(
             "_dt",
-            Number(dt)
+            Math.max(0, Number(dt) || 0)
         );
 
         this.call(`
@@ -343,8 +363,8 @@ game.tick(world, _dt)
 `);
 
         return this.snapshot();
-
     },
+
 
     /* ========================================================
        ÉTAT DU MONDE
@@ -352,17 +372,23 @@ game.tick(world, _dt)
 
     snapshot() {
 
-        return JSON.parse(
-            this.call(`
+        this.checkReady();
+
+        if (!this.world) {
+            return null;
+        }
+
+        const result = this.call(`
 import json
 
 json.dumps(
     game.snapshot(world)
 )
-`)
-        );
+`);
 
+        return JSON.parse(result);
     },
+
 
     /* ========================================================
        SAUVEGARDE
@@ -370,11 +396,19 @@ json.dumps(
 
     save() {
 
+        this.checkReady();
+
+        if (!this.world) {
+            throw new Error(
+                "Aucune partie à sauvegarder."
+            );
+        }
+
         return this.call(`
 game.save(world)
 `);
-
     },
+
 
     /* ========================================================
        CHARGEMENT D'UNE PARTIE
@@ -382,20 +416,46 @@ game.save(world)
 
     load(raw) {
 
+        this.checkReady();
+
         this.pyodide.globals.set(
             "_raw_save",
-            raw
+            String(raw)
         );
 
         this.call(`
 world = game.load(_raw_save)
 `);
 
-        return this.snapshot();
+        this.world = true;
 
+        console.log(
+            "DZ CONQUEST : sauvegarde chargée."
+        );
+
+        return this.snapshot();
+    },
+
+
+    /* ========================================================
+       FERMETURE DU MOTEUR
+       ======================================================== */
+
+    destroy() {
+
+        this.ready = false;
+        this.initializing = false;
+        this.game = null;
+        this.world = null;
+        this.pyodide = null;
+
+        console.log(
+            "DZ CONQUEST : moteur Python arrêté."
+        );
     }
 
 };
+
 
 /* ============================================================
    FIN DU PYTHON BRIDGE
