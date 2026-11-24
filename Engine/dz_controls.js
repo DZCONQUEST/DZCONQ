@@ -7,15 +7,18 @@ DZ.controls = {
     startY: 0,
     lastX: 0,
     lastY: 0,
-    dragButton: -1,
     threshold: 5,
 
     init() {
         const el = DZ.world.renderer.domElement;
 
-        el.addEventListener("contextmenu", e => e.preventDefault());
+        el.addEventListener("contextmenu", e => {
+            e.preventDefault();
+        });
 
         el.addEventListener("pointerdown", e => {
+            if (e.button !== 0 && e.button !== 2) return;
+
             this.dragging = true;
             this.moved = false;
 
@@ -24,8 +27,6 @@ DZ.controls = {
 
             this.lastX = e.clientX;
             this.lastY = e.clientY;
-
-            this.dragButton = e.button;
 
             el.setPointerCapture(e.pointerId);
         });
@@ -36,12 +37,9 @@ DZ.controls = {
             const dx = e.clientX - this.lastX;
             const dy = e.clientY - this.lastY;
 
-            const totalX = e.clientX - this.startX;
-            const totalY = e.clientY - this.startY;
-
             if (
-                Math.abs(totalX) > this.threshold ||
-                Math.abs(totalY) > this.threshold
+                Math.abs(e.clientX - this.startX) > this.threshold ||
+                Math.abs(e.clientY - this.startY) > this.threshold
             ) {
                 this.moved = true;
             }
@@ -57,41 +55,36 @@ DZ.controls = {
         el.addEventListener("pointerup", e => {
             if (!this.dragging) return;
 
-            if (
-                e.button === 0 &&
-                !this.moved
-            ) {
+            if (e.button === 0 && !this.moved) {
                 this.click(e);
             }
 
             this.dragging = false;
-            this.dragButton = -1;
         });
 
         el.addEventListener("pointercancel", () => {
             this.dragging = false;
-            this.dragButton = -1;
         });
 
         el.addEventListener("wheel", e => {
             e.preventDefault();
-
             DZ.world.zoom(e.deltaY);
-
         }, { passive: false });
     },
 
     click(e) {
 
-        // Sélection uniquement sur le terrain
         const hit = DZ.world.pick(e);
 
-        if (!hit) return;
+        if (!hit) {
+            DZ.toast("Impossible de sélectionner cet emplacement.");
+            return;
+        }
 
         const x = hit.point.x;
         const z = hit.point.z;
 
-        // Choix du point de départ
+        // 1. Choix de l'emplacement initial
         if (!DZ.state.started) {
 
             if (DZ.state.selectingStart) {
@@ -101,19 +94,29 @@ DZ.controls = {
             return;
         }
 
-        // Construction
+        // 2. Construction d'un bâtiment
         if (
             DZ.world.mode === "build" &&
             DZ.world.pendingBuilding
         ) {
+
             DZ.placeBuilding(x, z);
+
             return;
         }
 
-        // Sélection normale
-        DZ.selectedPoint = { x, z };
+        // 3. Fondation d'une ville secondaire
+        if (DZ.world.mode === "found_city") {
+
+            DZ.foundCityAt(x, z);
+
+            return;
+        }
+
+        // 4. Sélection normale
+        DZ.state.selectedPoint = { x, z };
 
         document.getElementById("inspector").textContent =
-            `Position : ${x.toFixed(0)}, ${z.toFixed(0)}`;
+            `Emplacement sélectionné : X ${x.toFixed(1)} | Z ${z.toFixed(1)}`;
     }
 };
