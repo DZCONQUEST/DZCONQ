@@ -16,6 +16,8 @@ DZ.bridge = {
 
     PYTHON_ROOT: "/home/pyodide/Python",
 
+    VERSION: "3.0.1",
+
     /* ========================================================
        MODULES PYTHON
        ======================================================== */
@@ -56,7 +58,6 @@ DZ.bridge = {
         "AI/ai_difficulty.py"
     ],
 
-
     /* ========================================================
        INITIALISATION
        ======================================================== */
@@ -68,17 +69,23 @@ DZ.bridge = {
         }
 
         if (this.initializing) {
-            throw new Error("Initialisation déjà en cours.");
+            throw new Error(
+                "Initialisation du moteur déjà en cours."
+            );
         }
 
         this.initializing = true;
 
-        const status = document.getElementById("loading-status");
+        const status = document.getElementById(
+            "loading-status"
+        );
 
         const updateStatus = (message) => {
+
             if (status) {
                 status.textContent = message;
             }
+
         };
 
         try {
@@ -88,39 +95,49 @@ DZ.bridge = {
             updateStatus("Chargement de Pyodide...");
 
             if (typeof loadPyodide !== "function") {
+
                 throw new Error(
                     "Pyodide introuvable. Vérifiez index.html."
                 );
+
             }
+
+            // 2. Charger Pyodide
 
             this.pyodide = await loadPyodide();
 
-            // 2. Préparer les dossiers
+            // 3. Préparer les dossiers
 
-            updateStatus("Préparation du système Python...");
+            updateStatus(
+                "Préparation du système Python..."
+            );
 
             this.pyodide.FS.mkdirTree(
                 this.PYTHON_ROOT + "/AI"
             );
 
-            // 3. Localiser le dossier Python
+            // 4. Localiser le bridge
 
             const bridgeScript = document.querySelector(
                 'script[src*="dz_python_bridge.js"]'
             );
 
             if (!bridgeScript || !bridgeScript.src) {
+
                 throw new Error(
                     "Impossible de localiser dz_python_bridge.js."
                 );
+
             }
+
+            // 5. Localiser le dossier Python sur GitHub Pages
 
             const baseURL = new URL(
                 "../Python/",
                 bridgeScript.src
             );
 
-            // 4. Télécharger les modules
+            // 6. Télécharger les modules Python
 
             for (const file of this.files) {
 
@@ -130,18 +147,29 @@ DZ.bridge = {
 
                 const url = new URL(file, baseURL);
 
+                url.searchParams.set(
+                    "v",
+                    this.VERSION
+                );
+
                 const response = await fetch(
-                    url.href + "?v=3.0"
+                    url.href,
+                    {
+                        method: "GET",
+                        cache: "no-store"
+                    }
                 );
 
                 if (!response.ok) {
+
                     throw new Error(
-                        "Fichier introuvable : " +
+                        "Impossible de charger " +
                         file +
                         " (HTTP " +
                         response.status +
-                        ")"
+                        ")."
                     );
+
                 }
 
                 const content = await response.text();
@@ -160,11 +188,14 @@ DZ.bridge = {
                     destination,
                     content
                 );
+
             }
 
-            // 5. Créer les packages Python
+            // 7. Créer les packages Python
 
-            updateStatus("Configuration des packages...");
+            updateStatus(
+                "Configuration des packages Python..."
+            );
 
             this.pyodide.FS.writeFile(
                 this.PYTHON_ROOT + "/__init__.py",
@@ -176,16 +207,17 @@ DZ.bridge = {
                 ""
             );
 
-            // 6. Configurer sys.path
+            // 8. Configurer le chemin Python
 
             this.pyodide.runPython(`
 import sys
 
 if "/home/pyodide" not in sys.path:
     sys.path.insert(0, "/home/pyodide")
+
 `);
 
-            // 7. Importer le moteur
+            // 9. Importer le moteur principal
 
             updateStatus(
                 "Importation du moteur DZ CONQUEST..."
@@ -195,11 +227,26 @@ if "/home/pyodide" not in sys.path:
 import Python.main as game
 `);
 
-            this.game = this.pyodide.globals.get("game");
+            this.game = this.pyodide.globals.get(
+                "game"
+            );
+
+            // 10. Vérifier le moteur
+
+            this.pyodide.runPython(`
+assert callable(game.new_game)
+assert callable(game.command)
+assert callable(game.tick)
+assert callable(game.snapshot)
+assert callable(game.save)
+assert callable(game.load)
+`);
 
             this.ready = true;
 
-            updateStatus("Python opérationnel.");
+            updateStatus(
+                "Moteur Python opérationnel."
+            );
 
             console.log(
                 "DZ CONQUEST V3.0 : moteur Python opérationnel."
@@ -229,6 +276,7 @@ import Python.main as game
             this.initializing = false;
 
         }
+
     },
 
 
@@ -239,10 +287,13 @@ import Python.main as game
     checkReady() {
 
         if (!this.ready || !this.pyodide) {
+
             throw new Error(
                 "Le moteur Python n'est pas opérationnel."
             );
+
         }
+
     },
 
 
@@ -255,6 +306,7 @@ import Python.main as game
         this.checkReady();
 
         return this.pyodide.runPython(code);
+
     },
 
 
@@ -262,24 +314,45 @@ import Python.main as game
        NOUVELLE PARTIE
        ======================================================== */
 
-    newGame(name = "Joueur", civ = "Nouvelle civilisation", ai = 2) {
+    newGame(
+        name = "Joueur",
+        civ = "Nouvelle civilisation",
+        ai = 2
+    ) {
 
         this.checkReady();
 
+        // Vérification des paramètres
+
+        const playerName = String(name || "Joueur");
+
+        const civilizationName = String(
+            civ || "Nouvelle civilisation"
+        );
+
+        const aiCount = Math.max(
+            0,
+            Math.min(5, Math.floor(Number(ai) || 0))
+        );
+
+        // Transmission vers Python
+
         this.pyodide.globals.set(
             "_player_name",
-            String(name)
+            playerName
         );
 
         this.pyodide.globals.set(
             "_civ_name",
-            String(civ)
+            civilizationName
         );
 
         this.pyodide.globals.set(
             "_ai_count",
-            Math.max(0, Math.min(5, Number(ai) || 0))
+            aiCount
         );
+
+        // Création du monde
 
         this.call(`
 world = game.new_game(
@@ -296,6 +369,7 @@ world = game.new_game(
         );
 
         return this.snapshot();
+
     },
 
 
@@ -308,10 +382,49 @@ world = game.new_game(
         this.checkReady();
 
         if (!this.world) {
+
             throw new Error(
                 "Aucune partie n'a encore été créée."
             );
+
         }
+
+        if (
+            payload === null ||
+            typeof payload !== "object" ||
+            Array.isArray(payload)
+        ) {
+
+            throw new Error(
+                "Les données de la commande doivent être un objet."
+            );
+
+        }
+
+        // Convertir les données JavaScript en JSON
+
+        let payloadJSON;
+
+        try {
+
+            payloadJSON = JSON.stringify(payload);
+
+        } catch (error) {
+
+            throw new Error(
+                "Impossible de convertir les données de la commande : " +
+                error.message
+            );
+
+        }
+
+        if (payloadJSON === undefined) {
+
+            payloadJSON = "{}";
+
+        }
+
+        // Envoyer les paramètres à Python
 
         this.pyodide.globals.set(
             "_action",
@@ -320,8 +433,10 @@ world = game.new_game(
 
         this.pyodide.globals.set(
             "_payload_json",
-            JSON.stringify(payload)
+            payloadJSON
         );
+
+        // Python reconstruit un véritable dictionnaire
 
         const result = this.call(`
 import json
@@ -334,10 +449,14 @@ _result = game.command(
     _payload
 )
 
-json.dumps(_result)
+json.dumps(
+    _result,
+    ensure_ascii=False
+)
 `);
 
         return JSON.parse(result);
+
     },
 
 
@@ -353,16 +472,32 @@ json.dumps(_result)
             return null;
         }
 
-        this.pyodide.globals.set(
-            "_dt",
-            Math.max(0, Number(dt) || 0)
+        const delta = Math.max(
+            0,
+            Number(dt) || 0
         );
 
-        this.call(`
-game.tick(world, _dt)
+        this.pyodide.globals.set(
+            "_dt",
+            delta
+        );
+
+        const result = this.call(`
+import json
+
+_result = game.tick(
+    world,
+    _dt
+)
+
+json.dumps(
+    _result,
+    ensure_ascii=False
+)
 `);
 
-        return this.snapshot();
+        return JSON.parse(result);
+
     },
 
 
@@ -381,12 +516,16 @@ game.tick(world, _dt)
         const result = this.call(`
 import json
 
+_result = game.snapshot(world)
+
 json.dumps(
-    game.snapshot(world)
+    _result,
+    ensure_ascii=False
 )
 `);
 
         return JSON.parse(result);
+
     },
 
 
@@ -399,14 +538,19 @@ json.dumps(
         this.checkReady();
 
         if (!this.world) {
+
             throw new Error(
                 "Aucune partie à sauvegarder."
             );
+
         }
 
-        return this.call(`
+        const result = this.call(`
 game.save(world)
 `);
+
+        return result;
+
     },
 
 
@@ -417,6 +561,14 @@ game.save(world)
     load(raw) {
 
         this.checkReady();
+
+        if (!raw) {
+
+            throw new Error(
+                "Fichier de sauvegarde vide."
+            );
+
+        }
 
         this.pyodide.globals.set(
             "_raw_save",
@@ -434,6 +586,33 @@ world = game.load(_raw_save)
         );
 
         return this.snapshot();
+
+    },
+
+
+    /* ========================================================
+       PAUSE / REPRISE
+       ======================================================== */
+
+    setPaused(value) {
+
+        this.checkReady();
+
+        if (!this.world) {
+            return false;
+        }
+
+        this.pyodide.globals.set(
+            "_paused",
+            Boolean(value)
+        );
+
+        this.call(`
+world["paused"] = bool(_paused)
+`);
+
+        return true;
+
     },
 
 
@@ -445,13 +624,16 @@ world = game.load(_raw_save)
 
         this.ready = false;
         this.initializing = false;
+
         this.game = null;
         this.world = null;
+
         this.pyodide = null;
 
         console.log(
             "DZ CONQUEST : moteur Python arrêté."
         );
+
     }
 
 };
