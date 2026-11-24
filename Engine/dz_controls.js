@@ -1,7 +1,6 @@
-/* ============================================================
-   DZ CONQUEST V3.0
-   CONTROLS ENGINE
-   ============================================================ */
+// ========================================================
+// DZ CONQUEST - CONTROLES DES PERSONNAGES
+// ========================================================
 
 window.DZ = window.DZ || {};
 
@@ -9,6 +8,7 @@ DZ.controls = {
 
     dragging: false,
     moved: false,
+    dragButton: -1,
 
     startX: 0,
     startY: 0,
@@ -18,35 +18,25 @@ DZ.controls = {
 
     threshold: 5,
 
-    pointerDown: false,
-
-    /* ========================================================
-       INITIALISATION
-       ======================================================== */
-
     init() {
 
         const el = DZ.world.renderer.domElement;
 
-        // Désactiver le menu contextuel
         el.addEventListener("contextmenu", e => {
             e.preventDefault();
         });
 
-
-        // =========================================
+        // --------------------------------------------
         // APPUI SOURIS
-        // =========================================
+        // --------------------------------------------
 
         el.addEventListener("pointerdown", e => {
 
-            if (e.button !== 0 && e.button !== 2) {
-                return;
-            }
+            if (e.button !== 0 && e.button !== 2) return;
 
             this.dragging = true;
             this.moved = false;
-            this.pointerDown = true;
+            this.dragButton = e.button;
 
             this.startX = e.clientX;
             this.startY = e.clientY;
@@ -58,20 +48,13 @@ DZ.controls = {
 
         });
 
-
-        // =========================================
+        // --------------------------------------------
         // DÉPLACEMENT SOURIS
-        // =========================================
+        // --------------------------------------------
 
         el.addEventListener("pointermove", e => {
 
-            // Prévisualisation de l'emplacement
-            if (!this.dragging) {
-
-                this.preview(e);
-
-                return;
-            }
+            if (!this.dragging) return;
 
             const dx = e.clientX - this.lastX;
             const dy = e.clientY - this.lastY;
@@ -79,73 +62,56 @@ DZ.controls = {
             const totalX = e.clientX - this.startX;
             const totalY = e.clientY - this.startY;
 
-
-            // Détection d'un déplacement réel
             if (
                 Math.abs(totalX) > this.threshold ||
                 Math.abs(totalY) > this.threshold
             ) {
-
                 this.moved = true;
-
             }
 
+            // Clic droit : caméra uniquement
 
-            // Déplacement caméra
-            if (this.moved) {
+            if (this.dragButton === 2 && this.moved) {
 
                 DZ.world.pan(dx, dy);
 
             }
-
 
             this.lastX = e.clientX;
             this.lastY = e.clientY;
 
         });
 
-
-        // =========================================
-        // RELÂCHEMENT SOURIS
-        // =========================================
+        // --------------------------------------------
+        // RELÂCHEMENT
+        // --------------------------------------------
 
         el.addEventListener("pointerup", e => {
 
-            if (!this.dragging) {
-                return;
-            }
+            if (!this.dragging) return;
 
-            // Clic gauche sans déplacement
             if (
-                e.button === 0 &&
+                this.dragButton === 0 &&
                 !this.moved
             ) {
-
                 this.click(e);
-
             }
 
             this.dragging = false;
-            this.pointerDown = false;
+            this.dragButton = -1;
 
         });
-
-
-        // =========================================
-        // ANNULATION
-        // =========================================
 
         el.addEventListener("pointercancel", () => {
 
             this.dragging = false;
-            this.pointerDown = false;
+            this.dragButton = -1;
 
         });
 
-
-        // =========================================
+        // --------------------------------------------
         // ZOOM
-        // =========================================
+        // --------------------------------------------
 
         el.addEventListener("wheel", e => {
 
@@ -153,117 +119,59 @@ DZ.controls = {
 
             DZ.world.zoom(e.deltaY);
 
-        }, {
-            passive: false
-        });
-
-
-        console.log(
-            "DZ CONQUEST : contrôles opérationnels."
-        );
+        }, { passive: false });
 
     },
 
-
-    /* ========================================================
-       PRÉVISUALISATION DU TERRAIN
-       ======================================================== */
-
-    preview(e) {
-
-        if (!DZ.world || !DZ.world.pick) {
-            return;
-        }
-
-        const hit = DZ.world.pick(e);
-
-        if (!hit) {
-            return;
-        }
-
-        const x = hit.point.x;
-        const z = hit.point.z;
-
-        // Afficher les coordonnées pendant la sélection
-        const inspector = document.getElementById("inspector");
-
-        if (!inspector) {
-            return;
-        }
-
-        if (
-            !DZ.state.started &&
-            DZ.state.selectingStart
-        ) {
-
-            inspector.textContent =
-                `Emplacement de départ : X ${x.toFixed(1)} | Z ${z.toFixed(1)}`;
-
-            return;
-        }
-
-        if (
-            DZ.world.mode === "build" &&
-            DZ.world.pendingBuilding
-        ) {
-
-            inspector.textContent =
-                `Construction : ${DZ.world.pendingBuilding} | X ${x.toFixed(1)} | Z ${z.toFixed(1)}`;
-
-            return;
-        }
-
-        if (DZ.world.mode === "found_city") {
-
-            inspector.textContent =
-                `Nouvelle ville : X ${x.toFixed(1)} | Z ${z.toFixed(1)}`;
-
-        }
-
-    },
-
-
-    /* ========================================================
-       GESTION DES CLICS
-       ======================================================== */
+    // ====================================================
+    // CLIC GAUCHE
+    // ====================================================
 
     click(e) {
 
-        // Obtenir le point exact sur le terrain
-        const hit = DZ.world.pick(e);
+        const person = DZ.world.pickCharacter(e);
 
-        if (!hit) {
+        // --------------------------------------------
+        // 1. CHOISIR LE PERSONNAGE
+        // --------------------------------------------
+
+        if (person) {
+
+            DZ.world.selectUnit(person);
 
             DZ.toast(
-                "Veuillez cliquer sur le terrain."
+                "Personnage sélectionné : " +
+                person.userData.label
             );
 
             return;
         }
 
+        // --------------------------------------------
+        // 2. CHOISIR LE TERRAIN
+        // --------------------------------------------
+
+        const hit = DZ.world.pickGround(e);
+
+        if (!hit) return;
+
         const x = hit.point.x;
         const z = hit.point.z;
 
-
-        // =========================================
-        // 1. CHOIX DE LA CAPITALE
-        // =========================================
+        // --------------------------------------------
+        // 3. POSITION INITIALE
+        // --------------------------------------------
 
         if (!DZ.state.started) {
 
-            if (DZ.state.selectingStart) {
-
-                DZ.startAt(x, z);
-
-            }
+            DZ.startAt(x, z);
 
             return;
         }
 
-
-        // =========================================
-        // 2. CONSTRUCTION
-        // =========================================
+        // --------------------------------------------
+        // 4. CONSTRUCTION
+        // --------------------------------------------
 
         if (
             DZ.world.mode === "build" &&
@@ -275,42 +183,34 @@ DZ.controls = {
             return;
         }
 
+        // --------------------------------------------
+        // 5. DÉPLACER LE PERSONNAGE SÉLECTIONNÉ
+        // --------------------------------------------
 
-        // =========================================
-        // 3. FONDATION D'UNE VILLE
-        // =========================================
+        if (DZ.world.selectedUnit) {
 
-        if (DZ.world.mode === "found_city") {
+            DZ.world.moveUnitTo(
+                DZ.world.selectedUnit,
+                x,
+                z
+            );
 
-            DZ.foundCityAt(x, z);
+            DZ.toast(
+                "Déplacement ordonné."
+            );
 
             return;
         }
 
+        // --------------------------------------------
+        // 6. SIMPLE SÉLECTION DU TERRAIN
+        // --------------------------------------------
 
-        // =========================================
-        // 4. SÉLECTION NORMALE
-        // =========================================
+        DZ.state.selectedPoint = { x, z };
 
-        DZ.state.selectedPoint = {
-            x: x,
-            z: z
-        };
-
-        const inspector = document.getElementById("inspector");
-
-        if (inspector) {
-
-            inspector.textContent =
-                `Position sélectionnée : X ${x.toFixed(1)} | Z ${z.toFixed(1)}`;
-
-        }
+        document.getElementById("inspector").textContent =
+            `Position : ${x.toFixed(1)}, ${z.toFixed(1)}`;
 
     }
 
 };
-
-
-/* ============================================================
-   FIN DU CONTRÔLEUR
-   ============================================================ */
