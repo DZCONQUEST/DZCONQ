@@ -1,109 +1,82 @@
-// ============================================================
-// DZ CONQUEST V3.0
-// MAIN ENGINE
-// ============================================================
-
 window.DZ = window.DZ || {};
 
 DZ.state = {
     started: false,
+    selectingStart: false,
     paused: false,
     selectedPoint: null,
     lastSnapshot: null,
     playerCity: null
 };
 
-
-// ============================================================
+// =============================================
 // INITIALISATION
-// ============================================================
+// =============================================
 
-DZ.init = async function () {
+DZ.init = async function() {
 
-    const status = document.getElementById("loading-status");
+    DZ.world.init();
 
     try {
 
-        status.textContent = "Initialisation du monde 3D...";
-
-        if (DZ.world && typeof DZ.world.init === "function") {
-            DZ.world.init();
-        }
-
-        if (!DZ.bridge || typeof DZ.bridge.init !== "function") {
-            throw new Error("Moteur Python introuvable.");
-        }
-
-        status.textContent = "Chargement de Python...";
-
         await DZ.bridge.init();
 
-        if (DZ.controls && typeof DZ.controls.init === "function") {
-            DZ.controls.init();
-        }
+    } catch (e) {
 
-        if (DZ.hud && typeof DZ.hud.init === "function") {
-            DZ.hud.init();
-        }
+        document.getElementById("loading-status").textContent =
+            "Erreur Python : " + e.message;
 
-        DZ.bindUI();
+        console.error(e);
 
-        status.textContent = "Python opérationnel.";
-
-        console.log("DZ CONQUEST V3.0 : initialisation terminée.");
-
-    } catch (error) {
-
-        console.error("DZ INIT ERROR:", error);
-
-        status.textContent = "Erreur : " + error.message;
+        return;
     }
+
+    DZ.controls.init();
+
+    this.bindUI();
 };
 
+// =============================================
+// INTERFACE
+// =============================================
 
-// ============================================================
-// INTERFACE UTILISATEUR
-// ============================================================
+DZ.bindUI = function() {
 
-DZ.bindUI = function () {
-
-    // INITIALISER LE MONDE
-
-    const startButton = document.getElementById("start-game");
-
-    startButton.onclick = function () {
+    // Démarrer une partie
+    document.getElementById("start-game").onclick = () => {
 
         try {
 
-            if (!DZ.bridge.ready) {
-                throw new Error("Python n'est pas encore prêt.");
-            }
+            DZ.bridge.newGame(
+                document.getElementById("player-name").value,
+                document.getElementById("civ-name").value,
+                document.getElementById("ai-count").value
+            );
 
-            const name = document.getElementById("player-name").value;
-            const civ = document.getElementById("civ-name").value;
-            const ai = Number(document.getElementById("ai-count").value);
+            DZ.state.started = false;
+            DZ.state.selectingStart = true;
 
-            DZ.bridge.newGame(name, civ, ai);
+            DZ.world.focus(0, 0);
 
             DZ.refresh();
 
-            document.getElementById("start-overlay").style.display = "none";
+            // Masquer l'écran d'accueil
+            document.getElementById("start-overlay").style.display =
+                "none";
 
-            DZ.toast("Monde créé. Cliquez sur le terrain pour choisir votre capitale.");
+            DZ.toast(
+                "Choisissez votre emplacement de départ sur la carte."
+            );
 
         } catch (error) {
 
-            console.error("NEW GAME ERROR:", error);
-
-            document.getElementById("loading-status").textContent =
-                "Erreur : " + error.message;
+            console.error(error);
+            DZ.toast("Erreur : " + error.message);
         }
     };
 
-
-    // PAUSE
-
-    document.getElementById("pause").onclick = function () {
+    // Pause
+    document.getElementById("pause").onclick = () => {
 
         DZ.state.paused = !DZ.state.paused;
 
@@ -112,61 +85,38 @@ DZ.bindUI = function () {
         );
     };
 
+    // Sauvegarde
+    document.getElementById("save").onclick = () => {
 
-    // SAUVEGARDE
+        localStorage.setItem(
+            "dz_conquest_v3_save",
+            DZ.bridge.save()
+        );
 
-    document.getElementById("save").onclick = function () {
-
-        try {
-
-            const save = DZ.bridge.save();
-
-            localStorage.setItem("dz_conquest_v3_save", save);
-
-            DZ.toast("Partie sauvegardée.");
-
-        } catch (error) {
-
-            DZ.toast("Erreur de sauvegarde : " + error.message);
-        }
+        DZ.toast("Partie sauvegardée.");
     };
 
+    // Chargement
+    document.getElementById("load").onclick = () => {
 
-    // CHARGEMENT
+        const raw = localStorage.getItem(
+            "dz_conquest_v3_save"
+        );
 
-    document.getElementById("load").onclick = function () {
-
-        const raw = localStorage.getItem("dz_conquest_v3_save");
-
-        if (!raw) {
-            DZ.toast("Aucune sauvegarde disponible.");
-            return;
-        }
-
-        try {
+        if (raw) {
 
             DZ.bridge.load(raw);
-
-            DZ.state.started = true;
-
-            document.getElementById("start-overlay").style.display = "none";
 
             DZ.refresh();
 
             DZ.toast("Partie chargée.");
-
-        } catch (error) {
-
-            DZ.toast("Erreur de chargement : " + error.message);
         }
     };
 
+    // Recrutement
+    document.getElementById("recruit").onclick = () => {
 
-    // RECRUTEMENT
-
-    document.getElementById("recruit").onclick = function () {
-
-        const result = DZ.bridge.command(
+        const r = DZ.bridge.command(
             "recruit",
             {
                 unit_type: "soldier",
@@ -174,137 +124,144 @@ DZ.bindUI = function () {
             }
         );
 
-        DZ.toast(result.message);
-
+        DZ.toast(r.message);
         DZ.refresh();
     };
 
+    // Fonder une ville
+    document.getElementById("found-city").onclick = () => {
 
-    // FONDER UNE VILLE
+        if (!DZ.state.started) {
+            DZ.toast("Choisissez d'abord votre emplacement de départ.");
+            return;
+        }
 
-    document.getElementById("found-city").onclick = function () {
+        DZ.world.mode = "found_city";
 
-        const point = DZ.selectedPoint || {
-            x: 150,
-            z: 100
-        };
-
-        const result = DZ.bridge.command(
-            "found_city",
-            {
-                x: point.x,
-                z: point.z,
-                name: "Nouvelle ville"
-            }
-        );
-
-        DZ.toast(result.message);
-
-        DZ.refresh();
+        DZ.toast("Cliquez sur le terrain pour fonder une ville.");
     };
 
-
-    // CONSTRUCTIONS
-
-    const definitions = window.DZ_DATA.buildings;
+    // Bâtiments
+    const defs = window.DZ_DATA.buildings;
 
     document.getElementById("buildings").innerHTML =
-        Object.entries(definitions).map(([key, value]) => {
-
-            return `<button data-building="${key}">${value.name}</button>`;
-
-        }).join("");
-
+        Object.entries(defs)
+            .map(([key, value]) =>
+                `<button data-building="${key}">${value.name}</button>`
+            )
+            .join("");
 
     document.querySelectorAll("[data-building]").forEach(button => {
 
-        button.onclick = function () {
+        button.onclick = () => {
+
+            if (!DZ.state.started) {
+                DZ.toast("Choisissez d'abord votre emplacement de départ.");
+                return;
+            }
 
             DZ.world.mode = "build";
 
             DZ.world.pendingBuilding = button.dataset.building;
 
             DZ.toast(
-                "Cliquez sur le terrain pour construire : " +
-                definitions[button.dataset.building].name
+                "Cliquez sur le terrain pour placer : " +
+                defs[button.dataset.building].name
             );
         };
     });
-
 };
 
+// =============================================
+// CRÉATION DE LA CAPITALE
+// =============================================
 
-// ============================================================
-// CHOIX DU POINT DE DÉPART
-// ============================================================
+DZ.startAt = function(x, z) {
 
-DZ.startAt = function (x, z) {
+    if (!DZ.bridge.ready) return;
 
-    if (!DZ.bridge.ready || DZ.state.started) {
+    const result = DZ.bridge.command(
+        "found_city",
+        {
+            x: x,
+            z: z,
+            name: "Capitale"
+        }
+    );
+
+    if (!result.ok) {
+
+        DZ.toast(result.message);
+
         return;
     }
 
-    try {
+    DZ.state.started = true;
+    DZ.state.selectingStart = false;
 
-        const result = DZ.bridge.command(
-            "found_city",
-            {
-                x: x,
-                z: z,
-                name: "Capitale"
-            }
-        );
+    DZ.state.playerCity = result.city.id;
 
-        if (!result.ok) {
+    DZ.world.addUnit(
+        "player",
+        x - 5,
+        z,
+        "Homme"
+    );
 
-            DZ.toast(result.message || "Impossible de créer la capitale.");
+    DZ.world.addUnit(
+        "player",
+        x + 5,
+        z + 4,
+        "Femme"
+    );
 
-            return;
-        }
+    DZ.world.focus(x, z);
 
-        DZ.state.started = true;
+    DZ.refresh();
 
-        DZ.state.playerCity = result.city.id;
-
-        // PERSONNAGES
-
-        DZ.world.addUnit(
-            "player",
-            x - 5,
-            z,
-            "Homme"
-        );
-
-        DZ.world.addUnit(
-            "player",
-            x + 5,
-            z + 4,
-            "Femme"
-        );
-
-        DZ.refresh();
-
-        DZ.toast("Votre civilisation est fondée !");
-
-    } catch (error) {
-
-        console.error("START POSITION ERROR:", error);
-
-        DZ.toast("Erreur : " + error.message);
-    }
+    DZ.toast(
+        "Votre civilisation est fondée. Deux personnages vous représentent."
+    );
 };
 
+// =============================================
+// FONDER UNE VILLE SECONDAIRE
+// =============================================
 
-// ============================================================
+DZ.foundCityAt = function(x, z) {
+
+    const result = DZ.bridge.command(
+        "found_city",
+        {
+            x: x,
+            z: z,
+            name: "Nouvelle ville"
+        }
+    );
+
+    DZ.toast(result.message);
+
+    DZ.world.mode = "inspect";
+
+    DZ.refresh();
+};
+
+// =============================================
 // CONSTRUCTION
-// ============================================================
+// =============================================
 
-DZ.placeBuilding = function (x, z) {
+DZ.placeBuilding = function(x, z) {
 
-    const cityId = DZ.state.playerCity;
+    const snapshot = DZ.bridge.snapshot();
 
-    if (!cityId) {
-        DZ.toast("Aucune capitale disponible.");
+    const city = snapshot.cities.find(
+        c => c.id === DZ.state.playerCity
+    );
+
+    if (!city) {
+
+        DZ.toast("Aucune ville active.");
+
         return;
     }
 
@@ -313,7 +270,7 @@ DZ.placeBuilding = function (x, z) {
     const result = DZ.bridge.command(
         "build",
         {
-            city_id: cityId,
+            city_id: city.id,
             building_type: kind,
             x: x,
             z: z
@@ -323,85 +280,66 @@ DZ.placeBuilding = function (x, z) {
     DZ.toast(result.message);
 
     DZ.world.pendingBuilding = null;
-
     DZ.world.mode = "inspect";
 
     DZ.refresh();
 };
 
+// =============================================
+// RAFRAÎCHIR L'INTERFACE
+// =============================================
 
-// ============================================================
-// ACTUALISATION
-// ============================================================
-
-DZ.refresh = function () {
+DZ.refresh = function() {
 
     const snapshot = DZ.bridge.snapshot();
 
     DZ.state.lastSnapshot = snapshot;
 
-    if (DZ.world && typeof DZ.world.sync === "function") {
-        DZ.world.sync(snapshot);
-    }
+    DZ.world.sync(snapshot);
 
-    if (DZ.hud && typeof DZ.hud.render === "function") {
-        DZ.hud.render(snapshot);
-    }
-
+    DZ.hud.render(snapshot);
 };
 
-
-// ============================================================
+// =============================================
 // NOTIFICATIONS
-// ============================================================
+// =============================================
 
-DZ.toast = function (message) {
+DZ.toast = function(message) {
 
-    const inspector = document.getElementById("inspector");
+    const el = document.getElementById("inspector");
 
-    if (inspector) {
-        inspector.textContent = message;
-    }
-
+    el.textContent = message;
 };
 
-
-// ============================================================
+// =============================================
 // BOUCLE DU JEU
-// ============================================================
+// =============================================
 
-DZ.loop = function () {
+DZ.loop = function() {
 
-    try {
+    if (
+        DZ.state.started &&
+        !DZ.state.paused
+    ) {
 
-        if (
-            DZ.state.started &&
-            !DZ.state.paused &&
-            DZ.bridge.ready
-        ) {
+        DZ.bridge.tick(1);
 
-            DZ.bridge.tick(1);
-
-            DZ.refresh();
-        }
-
-    } catch (error) {
-
-        console.error("GAME LOOP ERROR:", error);
+        DZ.refresh();
     }
 
-    setTimeout(DZ.loop, 1000);
+    setTimeout(
+        () => DZ.loop(),
+        1000
+    );
 };
 
+// =============================================
+// LANCEMENT
+// =============================================
 
-// ============================================================
-// DÉMARRAGE
-// ============================================================
-
-document.addEventListener("DOMContentLoaded", async function () {
+window.addEventListener("load", async () => {
 
     await DZ.init();
 
     DZ.loop();
-
 });
