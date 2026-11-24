@@ -519,12 +519,17 @@ DZ.world = {
 
 
     // ========================================================
-// PERSONNAGES 3D DÉTAILLÉS
+// PERSONNAGES 3D - VERSION AMÉLIORÉE
+// DZ CONQUEST
 // ========================================================
 
 addUnit(owner, x, z, label, isAI = false) {
 
-    const id = "person_" + label;
+    const id = "person_" + owner + "_" + label;
+
+    // ----------------------------------------------------
+    // PERSONNAGE DÉJÀ EXISTANT
+    // ----------------------------------------------------
 
     if (this.objects.has(id)) {
         const existing = this.objects.get(id);
@@ -535,52 +540,61 @@ addUnit(owner, x, z, label, isAI = false) {
     const character = new THREE.Group();
 
     const female = /femme|woman|female/i.test(label);
-
-    const skin = new THREE.MeshStandardMaterial({
-        color: 0xc99070,
-        roughness: 0.85
-    });
-
-    const hair = new THREE.MeshStandardMaterial({
-        color: female ? 0x38251c : 0x30251e,
-        roughness: 0.9
-    });
-
-    const clothes = new THREE.MeshStandardMaterial({
-        color: isAI ? 0x873e38 : female ? 0x497c78 : 0x987044,
-        roughness: 0.9
-    });
-
-    const secondaryClothes = new THREE.MeshStandardMaterial({
-        color: female ? 0x304e54 : 0x59442f,
-        roughness: 0.9
-    });
-
-    const boots = new THREE.MeshStandardMaterial({
-        color: 0x39291e
-    });
-
-    const dark = new THREE.MeshStandardMaterial({
-        color: 0x211c19
-    });
-
-    const white = new THREE.MeshStandardMaterial({
-        color: 0xf2e8d9
-    });
+    const builder = /homme|man|builder/i.test(label);
 
     // ----------------------------------------------------
-    // OUTIL : AJOUTER UNE SPHÈRE
+    // MATÉRIAUX
     // ----------------------------------------------------
 
-    const sphere = (parent, material, x, y, z, sx, sy, sz) => {
+    const material = (color, roughness = 0.8, metalness = 0) =>
+        new THREE.MeshStandardMaterial({
+            color,
+            roughness,
+            metalness
+        });
 
-        const mesh = new THREE.Mesh(
-            new THREE.SphereGeometry(1, 16, 12),
-            material
-        );
+    const skin = material(0xb98263, 0.82);
+    const skinLight = material(0xd09a79, 0.8);
+    const skinDark = material(0x87573f, 0.9);
 
-        mesh.position.set(x, y, z);
-        mesh.scale.set(sx, sy, sz);
+    const hair = material(female ? 0x241710 : 0x29201b);
+    const hairLight = material(0x493126);
+
+    const clothes = material(
+        isAI ? 0x873e38 : female ? 0x426e70 : 0x9a754d
+    );
+
+    const clothDark = material(
+        female ? 0x293f43 : 0x394333
+    );
+
+    const clothLight = material(
+        female ? 0x71918b : 0xb69a70
+    );
+
+    const trousers = material(
+        female ? 0x343a3d : 0x45463b
+    );
+
+    const boots = material(0x30241c);
+    const bootLight = material(0x59402c);
+
+    const metal = material(0x777b78, 0.35, 0.7);
+    const beltMaterial = material(0x39271c);
+
+    const eyeWhite = material(0xf0e9df);
+    const iris = material(0x68442d);
+    const pupil = material(0x17120f);
+    const mouthMaterial = material(0x693e37);
+
+    // ----------------------------------------------------
+    // OUTILS DE CONSTRUCTION
+    // ----------------------------------------------------
+
+    const addMesh = (geometry, mat, parent = character) => {
+
+        const mesh = new THREE.Mesh(geometry, mat);
+
         mesh.castShadow = true;
         mesh.receiveShadow = true;
 
@@ -589,196 +603,719 @@ addUnit(owner, x, z, label, isAI = false) {
         return mesh;
     };
 
-    // ----------------------------------------------------
-    // OUTIL : AJOUTER UN CYLINDRE ENTRE DEUX POINTS
-    // ----------------------------------------------------
+    const sphere = (
+        parent,
+        mat,
+        x, y, z,
+        sx, sy, sz,
+        widthSegments = 24,
+        heightSegments = 16
+    ) => {
 
-    const limb = (parent, material, start, end, radius) => {
+        const mesh = addMesh(
+            new THREE.SphereGeometry(
+                1,
+                widthSegments,
+                heightSegments
+            ),
+            mat,
+            parent
+        );
+
+        mesh.position.set(x, y, z);
+        mesh.scale.set(sx, sy, sz);
+
+        return mesh;
+    };
+
+    const box = (
+        parent,
+        mat,
+        x, y, z,
+        sx, sy, sz,
+        bevel = 0
+    ) => {
+
+        const geometry = bevel > 0
+            ? new THREE.BoxGeometry(sx, sy, sz)
+            : new THREE.BoxGeometry(sx, sy, sz);
+
+        const mesh = addMesh(geometry, mat, parent);
+
+        mesh.position.set(x, y, z);
+
+        return mesh;
+    };
+
+    // Cylindre orienté entre deux points
+
+    const segment = (
+        parent,
+        mat,
+        start,
+        end,
+        radiusStart,
+        radiusEnd = radiusStart
+    ) => {
 
         const a = new THREE.Vector3(...start);
         const b = new THREE.Vector3(...end);
 
-        const direction = new THREE.Vector3().subVectors(b, a);
+        const direction = new THREE.Vector3()
+            .subVectors(b, a);
 
-        const mesh = new THREE.Mesh(
+        const length = direction.length();
+
+        const mesh = addMesh(
             new THREE.CylinderGeometry(
-                radius * 0.85,
-                radius,
-                direction.length(),
-                10
+                radiusEnd,
+                radiusStart,
+                length,
+                16,
+                2
             ),
-            material
+            mat,
+            parent
         );
 
-        mesh.position.copy(a).add(b).multiplyScalar(0.5);
+        mesh.position.copy(a)
+            .add(b)
+            .multiplyScalar(0.5);
 
         mesh.quaternion.setFromUnitVectors(
             new THREE.Vector3(0, 1, 0),
             direction.normalize()
         );
 
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-
-        parent.add(mesh);
-
         return mesh;
     };
+
+    // ----------------------------------------------------
+    // CHAUSSURES
+    // ----------------------------------------------------
+
+    for (const side of [-1, 1]) {
+
+        const foot = sphere(
+            character,
+            boots,
+            side * 0.78,
+            0.55,
+            0.28,
+            0.55,
+            0.52,
+            0.95
+        );
+
+        foot.rotation.x = -0.08;
+
+        sphere(
+            character,
+            bootLight,
+            side * 0.78,
+            0.3,
+            0.3,
+            0.53,
+            0.12,
+            0.9
+        );
+
+        // Semelle
+
+        box(
+            character,
+            boots,
+            side * 0.78,
+            0.19,
+            0.32,
+            1.0,
+            0.16,
+            1.65
+        );
+
+    }
 
     // ----------------------------------------------------
     // JAMBES
     // ----------------------------------------------------
 
-    if (female) {
+    for (const side of [-1, 1]) {
 
-        // Robe / vêtement inférieur
+        const hip = [side * 0.78, 8.6, 0];
+        const knee = [side * 0.82, 4.8, 0.02];
+        const ankle = [side * 0.78, 1.0, 0];
 
-        const dress = new THREE.Mesh(
-            new THREE.CylinderGeometry(2.5, 3.8, 8, 16),
-            clothes
+        segment(
+            character,
+            trousers,
+            hip,
+            knee,
+            0.77,
+            0.57
         );
 
-        dress.position.y = 8;
-        dress.castShadow = true;
-        character.add(dress);
+        sphere(
+            character,
+            trousers,
+            side * 0.82,
+            4.8,
+            0,
+            0.59,
+            0.65,
+            0.59
+        );
 
-        // Bottes
+        segment(
+            character,
+            trousers,
+            knee,
+            ankle,
+            0.56,
+            0.36
+        );
 
-        sphere(character, boots, -1.1, 1.2, 0.5, 0.85, 1.2, 1.2);
-        sphere(character, boots, 1.1, 1.2, 0.5, 0.85, 1.2, 1.2);
+        // Genouillère / pli du pantalon
 
-    } else {
+        sphere(
+            character,
+            clothDark,
+            side * 0.82,
+            4.9,
+            0.49,
+            0.38,
+            0.28,
+            0.12
+        );
 
-        // Pantalon
+        // Ourlet
 
-        limb(character, secondaryClothes,
-            [-1.1, 8, 0], [-1.1, 2, 0], 1.05);
-
-        limb(character, secondaryClothes,
-            [1.1, 8, 0], [1.1, 2, 0], 1.05);
-
-        // Bottes
-
-        sphere(character, boots, -1.1, 1.1, 0.5, 0.9, 1.1, 1.4);
-        sphere(character, boots, 1.1, 1.1, 0.5, 0.9, 1.1, 1.4);
+        sphere(
+            character,
+            clothDark,
+            side * 0.78,
+            1.0,
+            0,
+            0.39,
+            0.2,
+            0.4
+        );
 
     }
 
     // ----------------------------------------------------
-    // BUSTE
+    // TUNIQUE OU VESTE
     // ----------------------------------------------------
 
-    const torso = new THREE.Mesh(
-        new THREE.CapsuleGeometry(2.2, 5, 5, 12),
-        clothes
-    );
-
-    torso.position.y = 12;
-    torso.castShadow = true;
-
-    character.add(torso);
-
-    // Cou
-
-    limb(
+    const torso = sphere(
         character,
-        skin,
-        [0, 15, 0],
-        [0, 17, 0],
-        0.8
+        clothes,
+        0,
+        11.5,
+        0,
+        female ? 1.48 : 1.65,
+        3.05,
+        0.95
     );
 
-    // Ceinture
+    // Ventre et silhouette du vêtement
 
-    const belt = new THREE.Mesh(
-        new THREE.TorusGeometry(2, 0.22, 6, 16),
-        boots
+    sphere(
+        character,
+        clothes,
+        0,
+        9.5,
+        0,
+        1.45,
+        1.15,
+        0.95
+    );
+
+    // Veste intérieure
+
+    box(
+        character,
+        clothDark,
+        0,
+        11.4,
+        0.92,
+        0.12,
+        3.8,
+        0.08
+    );
+
+    // Col
+
+    const collar = addMesh(
+        new THREE.CylinderGeometry(
+            0.38,
+            0.53,
+            0.55,
+            20
+        ),
+        clothLight
+    );
+
+    collar.position.set(0, 14.15, 0);
+
+    // Coutures verticales
+
+    for (const side of [-1, 1]) {
+
+        segment(
+            character,
+            clothLight,
+            [side * 1.15, 13.3, 0.65],
+            [side * 1.15, 9.7, 0.75],
+            0.035
+        );
+
+    }
+
+    // Boutons
+
+    for (let i = 0; i < 4; i++) {
+
+        sphere(
+            character,
+            metal,
+            0,
+            13.1 - i * 0.8,
+            0.99,
+            0.08,
+            0.08,
+            0.045,
+            12,
+            8
+        );
+
+    }
+
+    // Poches de la veste
+
+    for (const side of [-1, 1]) {
+
+        box(
+            character,
+            clothDark,
+            side * 0.93,
+            11.5,
+            0.85,
+            0.55,
+            0.65,
+            0.12
+        );
+
+        box(
+            character,
+            clothLight,
+            side * 0.93,
+            11.85,
+            0.92,
+            0.58,
+            0.12,
+            0.1
+        );
+
+    }
+
+    // ----------------------------------------------------
+    // TENUE FÉMININE : TUNIQUE LONGUE
+    // ----------------------------------------------------
+
+    if (female) {
+
+        const tunic = addMesh(
+            new THREE.CylinderGeometry(
+                1.8,
+                2.05,
+                3.5,
+                32,
+                3
+            ),
+            clothes
+        );
+
+        tunic.position.set(0, 8.4, 0);
+
+        // Bord inférieur de la tunique
+
+        const hem = addMesh(
+            new THREE.TorusGeometry(
+                1.95,
+                0.055,
+                8,
+                32
+            ),
+            clothLight
+        );
+
+        hem.rotation.x = Math.PI / 2;
+        hem.position.y = 6.65;
+
+        // Décoration discrète
+
+        for (const side of [-1, 1]) {
+
+            segment(
+                character,
+                clothLight,
+                [side * 0.7, 9.9, 0.95],
+                [side * 0.7, 7.0, 1.25],
+                0.035
+            );
+
+        }
+
+    }
+
+    // ----------------------------------------------------
+    // CEINTURE
+    // ----------------------------------------------------
+
+    const belt = addMesh(
+        new THREE.TorusGeometry(
+            1.45,
+            0.13,
+            10,
+            40
+        ),
+        beltMaterial
     );
 
     belt.rotation.x = Math.PI / 2;
-    belt.position.y = 9.5;
+    belt.position.y = 9.15;
 
-    character.add(belt);
+    box(
+        character,
+        metal,
+        0,
+        9.15,
+        1.43,
+        0.35,
+        0.35,
+        0.12
+    );
 
     // ----------------------------------------------------
-    // BRAS
+    // ÉPAULES ET BRAS
     // ----------------------------------------------------
 
     for (const side of [-1, 1]) {
 
-        const shoulder = [side * 2.1, 14, 0];
+        const shoulder = [side * 1.48, 13.3, 0];
+        const elbow = [side * 2.05, 10.5, 0.1];
+        const wrist = [side * 2.0, 8.0, 0.35];
 
-        const elbow = [side * 3.1, 10.5, 0.3];
+        sphere(
+            character,
+            clothes,
+            shoulder[0],
+            shoulder[1],
+            shoulder[2],
+            0.76,
+            0.8,
+            0.8
+        );
 
-        const wrist = [side * 3.3, 7.5, 0.5];
+        segment(
+            character,
+            clothes,
+            shoulder,
+            elbow,
+            0.67,
+            0.49
+        );
 
-        limb(character, clothes, shoulder, elbow, 0.95);
+        sphere(
+            character,
+            clothes,
+            elbow[0],
+            elbow[1],
+            elbow[2],
+            0.49,
+            0.5,
+            0.49
+        );
 
-        limb(character, skin, elbow, wrist, 0.65);
+        segment(
+            character,
+            skin,
+            elbow,
+            wrist,
+            0.43,
+            0.29
+        );
 
-        // Mains
+        // Poignet
+
+        sphere(
+            character,
+            skinLight,
+            wrist[0],
+            wrist[1],
+            wrist[2],
+            0.3,
+            0.35,
+            0.3
+        );
+
+        // Main
 
         sphere(
             character,
             skin,
-            side * 3.3,
-            7.1,
-            0.5,
-            0.75,
-            0.8,
-            0.65
+            side * 2.0,
+            7.55,
+            0.42,
+            0.38,
+            0.48,
+            0.25
+        );
+
+        // Doigts
+
+        for (let finger = 0; finger < 4; finger++) {
+
+            const offset = (finger - 1.5) * 0.14;
+
+            segment(
+                character,
+                skin,
+                [
+                    side * 2.0 + offset,
+                    7.42,
+                    0.52
+                ],
+                [
+                    side * 2.0 + offset,
+                    7.08,
+                    0.56
+                ],
+                0.085,
+                0.065
+            );
+
+        }
+
+        // Pouce
+
+        segment(
+            character,
+            skin,
+            [
+                side * 1.72,
+                7.65,
+                0.45
+            ],
+            [
+                side * 1.61,
+                7.38,
+                0.58
+            ],
+            0.12,
+            0.09
+        );
+
+        // Manchette
+
+        const cuff = addMesh(
+            new THREE.CylinderGeometry(
+                0.3,
+                0.33,
+                0.22,
+                16
+            ),
+            clothDark
+        );
+
+        cuff.position.set(
+            side * 2.0,
+            7.95,
+            0.35
         );
 
     }
+
+    // ----------------------------------------------------
+    // COU
+    // ----------------------------------------------------
+
+    segment(
+        character,
+        skin,
+        [0, 14.0, 0],
+        [0, 15.4, 0],
+        0.48,
+        0.43
+    );
 
     // ----------------------------------------------------
     // TÊTE
     // ----------------------------------------------------
 
+    const head = sphere(
+        character,
+        skin,
+        0,
+        16.7,
+        0,
+        1.35,
+        1.7,
+        1.18,
+        32,
+        24
+    );
+
+    // Mâchoire
+
     sphere(
         character,
         skin,
         0,
-        19.5,
-        0,
-        2.1,
-        2.5,
-        1.8
+        15.85,
+        0.28,
+        1.08,
+        0.85,
+        0.94
     );
+
+    // Joues
+
+    for (const side of [-1, 1]) {
+
+        sphere(
+            character,
+            skinLight,
+            side * 0.79,
+            16.3,
+            0.68,
+            0.42,
+            0.43,
+            0.3
+        );
+
+    }
 
     // ----------------------------------------------------
     // OREILLES
-    // ----------------------------------------------------
-
-    sphere(character, skin, -2.05, 19.5, 0, 0.45, 0.7, 0.4);
-    sphere(character, skin, 2.05, 19.5, 0, 0.45, 0.7, 0.4);
-
-    // ----------------------------------------------------
-    // YEUX
     // ----------------------------------------------------
 
     for (const side of [-1, 1]) {
 
         sphere(
             character,
-            white,
-            side * 0.8,
-            20,
-            1.55,
-            0.42,
-            0.35,
-            0.2
+            skin,
+            side * 1.3,
+            16.7,
+            0,
+            0.28,
+            0.52,
+            0.32
         );
 
         sphere(
             character,
-            dark,
-            side * 0.8,
-            20,
-            1.72,
-            0.18,
-            0.23,
+            skinDark,
+            side * 1.43,
+            16.7,
+            0.13,
+            0.11,
+            0.25,
             0.12
+        );
+
+    }
+
+    // ----------------------------------------------------
+    // YEUX ET SOURCILS
+    // ----------------------------------------------------
+
+    for (const side of [-1, 1]) {
+
+        // Contour des yeux
+
+        sphere(
+            character,
+            skinDark,
+            side * 0.53,
+            17.0,
+            0.99,
+            0.43,
+            0.29,
+            0.14
+        );
+
+        // Blanc de l'œil
+
+        sphere(
+            character,
+            eyeWhite,
+            side * 0.53,
+            17.02,
+            1.09,
+            0.36,
+            0.21,
+            0.12
+        );
+
+        // Iris
+
+        sphere(
+            character,
+            iris,
+            side * 0.53,
+            17.02,
+            1.2,
+            0.16,
+            0.17,
+            0.06
+        );
+
+        // Pupille
+
+        sphere(
+            character,
+            pupil,
+            side * 0.53,
+            17.02,
+            1.25,
+            0.075,
+            0.11,
+            0.035
+        );
+
+        // Reflet de l'œil
+
+        sphere(
+            character,
+            eyeWhite,
+            side * 0.49,
+            17.09,
+            1.29,
+            0.035,
+            0.035,
+            0.02,
+            8,
+            8
+        );
+
+        // Sourcils
+
+        segment(
+            character,
+            hair,
+            [
+                side * 0.87,
+                17.48,
+                1.02
+            ],
+            [
+                side * 0.25,
+                17.53,
+                1.08
+            ],
+            0.095,
+            0.07
         );
 
     }
@@ -789,25 +1326,69 @@ addUnit(owner, x, z, label, isAI = false) {
 
     sphere(
         character,
+        skinLight,
+        0,
+        16.65,
+        1.15,
+        0.27,
+        0.48,
+        0.35
+    );
+
+    sphere(
+        character,
         skin,
         0,
-        19.4,
-        1.85,
-        0.35,
-        0.65,
-        0.4
+        16.38,
+        1.22,
+        0.36,
+        0.23,
+        0.3
     );
+
+    for (const side of [-1, 1]) {
+
+        sphere(
+            character,
+            skinDark,
+            side * 0.19,
+            16.34,
+            1.43,
+            0.07,
+            0.055,
+            0.035,
+            10,
+            8
+        );
+
+    }
 
     // ----------------------------------------------------
     // BOUCHE
     // ----------------------------------------------------
 
-    limb(
+    sphere(
         character,
-        dark,
-        [-0.35, 18.4, 1.72],
-        [0.35, 18.4, 1.72],
-        0.07
+        mouthMaterial,
+        0,
+        15.95,
+        1.15,
+        0.29,
+        0.09,
+        0.08
+    );
+
+    // Lèvre inférieure
+
+    sphere(
+        character,
+        skinLight,
+        0,
+        15.84,
+        1.13,
+        0.24,
+        0.055,
+        0.06
     );
 
     // ----------------------------------------------------
@@ -818,37 +1399,69 @@ addUnit(owner, x, z, label, isAI = false) {
         character,
         hair,
         0,
-        21.5,
-        -0.1,
-        2.15,
-        1.15,
-        1.9
+        17.95,
+        -0.12,
+        1.38,
+        0.75,
+        1.25,
+        32,
+        20
+    );
+
+    // Ligne frontale des cheveux
+
+    sphere(
+        character,
+        hair,
+        0,
+        17.58,
+        0.85,
+        1.08,
+        0.33,
+        0.38
     );
 
     if (female) {
 
-        // Cheveux longs
+        // Cheveux longs sur les côtés
+
+        for (const side of [-1, 1]) {
+
+            sphere(
+                character,
+                hair,
+                side * 1.05,
+                16.2,
+                -0.22,
+                0.38,
+                1.85,
+                0.48
+            );
+
+            sphere(
+                character,
+                hairLight,
+                side * 1.15,
+                15.6,
+                -0.1,
+                0.13,
+                1.1,
+                0.12
+            );
+
+        }
+
+        // Arrière des cheveux
 
         sphere(
             character,
             hair,
-            -1.7,
-            18.8,
-            -0.3,
-            0.65,
-            2.8,
-            0.8
-        );
-
-        sphere(
-            character,
-            hair,
-            1.7,
-            18.8,
-            -0.3,
-            0.65,
-            2.8,
-            0.8
+            0,
+            16.1,
+            -0.82,
+            1.1,
+            1.8,
+            0.48
         );
 
     } else {
@@ -859,38 +1472,100 @@ addUnit(owner, x, z, label, isAI = false) {
             character,
             hair,
             0,
-            18.2,
-            1.1,
-            1.25,
-            0.75,
-            0.7
+            15.65,
+            0.84,
+            0.95,
+            0.62,
+            0.42
         );
+
+        // Moustache
+
+        for (const side of [-1, 1]) {
+
+            sphere(
+                character,
+                hairLight,
+                side * 0.23,
+                16.08,
+                1.19,
+                0.34,
+                0.12,
+                0.13
+            );
+
+        }
 
     }
 
     // ----------------------------------------------------
-    // ÉPAULES
+    // SAC À OUTILS DU CONSTRUCTEUR
     // ----------------------------------------------------
 
-    sphere(character, clothes, -2.1, 14, 0, 1.1, 1.1, 1.1);
-    sphere(character, clothes, 2.1, 14, 0, 1.1, 1.1, 1.1);
+    if (!female && builder) {
 
-    // ----------------------------------------------------
-    // ACCESSOIRE : SAC DU CONSTRUCTEUR
-    // ----------------------------------------------------
-
-    if (!female && /homme|man|builder/i.test(label)) {
-
-        const bag = new THREE.Mesh(
-            new THREE.BoxGeometry(2.8, 4, 1.5),
-            secondaryClothes
+        const backpack = box(
+            character,
+            clothDark,
+            0,
+            11.7,
+            -1.0,
+            1.9,
+            2.9,
+            0.85
         );
 
-        bag.position.set(0, 12, -1.8);
+        backpack.rotation.x = -0.08;
 
-        bag.castShadow = true;
+        // Poche du sac
 
-        character.add(bag);
+        box(
+            character,
+            clothLight,
+            0,
+            10.8,
+            -1.48,
+            1.15,
+            0.9,
+            0.12
+        );
+
+        // Bretelles
+
+        for (const side of [-1, 1]) {
+
+            segment(
+                character,
+                beltMaterial,
+                [
+                    side * 0.75,
+                    13.2,
+                    0.75
+                ],
+                [
+                    side * 0.75,
+                    10.4,
+                    0.9
+                ],
+                0.12
+            );
+
+        }
+
+        // Petit outil métallique
+
+        const tool = addMesh(
+            new THREE.CylinderGeometry(
+                0.055,
+                0.055,
+                1.8,
+                10
+            ),
+            metal
+        );
+
+        tool.position.set(0.9, 10.8, -1.55);
+        tool.rotation.z = 0.3;
 
     }
 
@@ -901,25 +1576,23 @@ addUnit(owner, x, z, label, isAI = false) {
     character.position.set(x, 0, z);
 
     character.userData = {
-
         kind: "person",
-
         label: label,
-
         owner: owner,
-
-        gender: female ? "female" : "male"
-
+        gender: female ? "female" : "male",
+        isAI: isAI
     };
+
+    // ----------------------------------------------------
+    // AJOUT À LA SCÈNE
+    // ----------------------------------------------------
 
     this.scene.add(character);
 
     this.objects.set(id, character);
 
     return character;
-
 },
-
 
     // ========================================================
     // VILLES
