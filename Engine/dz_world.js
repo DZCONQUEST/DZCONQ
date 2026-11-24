@@ -519,87 +519,406 @@ DZ.world = {
 
 
     // ========================================================
-    // PERSONNAGES
-    // ========================================================
+// PERSONNAGES 3D DÉTAILLÉS
+// ========================================================
 
-    addUnit(owner, x, z, label, isAI = false) {
+addUnit(owner, x, z, label, isAI = false) {
 
-        const id = "person_" + label;
+    const id = "person_" + label;
 
-        // Éviter les doublons
+    if (this.objects.has(id)) {
+        const existing = this.objects.get(id);
+        existing.position.set(x, 0, z);
+        return existing;
+    }
 
-        if (this.objects.has(id)) {
+    const character = new THREE.Group();
 
-            const existing = this.objects.get(id);
+    const female = /femme|woman|female/i.test(label);
 
-            existing.position.set(x, 0, z);
+    const skin = new THREE.MeshStandardMaterial({
+        color: 0xc99070,
+        roughness: 0.85
+    });
 
-            return existing;
+    const hair = new THREE.MeshStandardMaterial({
+        color: female ? 0x38251c : 0x30251e,
+        roughness: 0.9
+    });
 
-        }
+    const clothes = new THREE.MeshStandardMaterial({
+        color: isAI ? 0x873e38 : female ? 0x497c78 : 0x987044,
+        roughness: 0.9
+    });
 
-        const group = new THREE.Group();
+    const secondaryClothes = new THREE.MeshStandardMaterial({
+        color: female ? 0x304e54 : 0x59442f,
+        roughness: 0.9
+    });
 
-        const bodyMaterial = new THREE.MeshStandardMaterial({
+    const boots = new THREE.MeshStandardMaterial({
+        color: 0x39291e
+    });
 
-            color: isAI ? 0x9b4540 : 0xdec28a
+    const dark = new THREE.MeshStandardMaterial({
+        color: 0x211c19
+    });
 
-        });
+    const white = new THREE.MeshStandardMaterial({
+        color: 0xf2e8d9
+    });
 
-        const skinMaterial = new THREE.MeshStandardMaterial({
+    // ----------------------------------------------------
+    // OUTIL : AJOUTER UNE SPHÈRE
+    // ----------------------------------------------------
 
-            color: 0xd9b18d
+    const sphere = (parent, material, x, y, z, sx, sy, sz) => {
 
-        });
-
-        const body = new THREE.Mesh(
-            new THREE.CapsuleGeometry(
-                2.4,
-                7,
-                4,
-                8
-            ),
-            bodyMaterial
+        const mesh = new THREE.Mesh(
+            new THREE.SphereGeometry(1, 16, 12),
+            material
         );
 
-        body.position.y = 6;
+        mesh.position.set(x, y, z);
+        mesh.scale.set(sx, sy, sz);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
 
-        body.castShadow = true;
+        parent.add(mesh);
 
-        const head = new THREE.Mesh(
-            new THREE.SphereGeometry(
-                2.2,
-                12,
+        return mesh;
+    };
+
+    // ----------------------------------------------------
+    // OUTIL : AJOUTER UN CYLINDRE ENTRE DEUX POINTS
+    // ----------------------------------------------------
+
+    const limb = (parent, material, start, end, radius) => {
+
+        const a = new THREE.Vector3(...start);
+        const b = new THREE.Vector3(...end);
+
+        const direction = new THREE.Vector3().subVectors(b, a);
+
+        const mesh = new THREE.Mesh(
+            new THREE.CylinderGeometry(
+                radius * 0.85,
+                radius,
+                direction.length(),
                 10
             ),
-            skinMaterial
+            material
         );
 
-        head.position.y = 12;
+        mesh.position.copy(a).add(b).multiplyScalar(0.5);
 
-        head.castShadow = true;
+        mesh.quaternion.setFromUnitVectors(
+            new THREE.Vector3(0, 1, 0),
+            direction.normalize()
+        );
 
-        group.add(body, head);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
 
-        group.position.set(x, 0, z);
+        parent.add(mesh);
 
-        group.userData = {
+        return mesh;
+    };
 
-            kind: "person",
+    // ----------------------------------------------------
+    // JAMBES
+    // ----------------------------------------------------
 
-            label: label,
+    if (female) {
 
-            owner: owner
+        // Robe / vêtement inférieur
 
-        };
+        const dress = new THREE.Mesh(
+            new THREE.CylinderGeometry(2.5, 3.8, 8, 16),
+            clothes
+        );
 
-        this.scene.add(group);
+        dress.position.y = 8;
+        dress.castShadow = true;
+        character.add(dress);
 
-        this.objects.set(id, group);
+        // Bottes
 
-        return group;
+        sphere(character, boots, -1.1, 1.2, 0.5, 0.85, 1.2, 1.2);
+        sphere(character, boots, 1.1, 1.2, 0.5, 0.85, 1.2, 1.2);
 
-    },
+    } else {
+
+        // Pantalon
+
+        limb(character, secondaryClothes,
+            [-1.1, 8, 0], [-1.1, 2, 0], 1.05);
+
+        limb(character, secondaryClothes,
+            [1.1, 8, 0], [1.1, 2, 0], 1.05);
+
+        // Bottes
+
+        sphere(character, boots, -1.1, 1.1, 0.5, 0.9, 1.1, 1.4);
+        sphere(character, boots, 1.1, 1.1, 0.5, 0.9, 1.1, 1.4);
+
+    }
+
+    // ----------------------------------------------------
+    // BUSTE
+    // ----------------------------------------------------
+
+    const torso = new THREE.Mesh(
+        new THREE.CapsuleGeometry(2.2, 5, 5, 12),
+        clothes
+    );
+
+    torso.position.y = 12;
+    torso.castShadow = true;
+
+    character.add(torso);
+
+    // Cou
+
+    limb(
+        character,
+        skin,
+        [0, 15, 0],
+        [0, 17, 0],
+        0.8
+    );
+
+    // Ceinture
+
+    const belt = new THREE.Mesh(
+        new THREE.TorusGeometry(2, 0.22, 6, 16),
+        boots
+    );
+
+    belt.rotation.x = Math.PI / 2;
+    belt.position.y = 9.5;
+
+    character.add(belt);
+
+    // ----------------------------------------------------
+    // BRAS
+    // ----------------------------------------------------
+
+    for (const side of [-1, 1]) {
+
+        const shoulder = [side * 2.1, 14, 0];
+
+        const elbow = [side * 3.1, 10.5, 0.3];
+
+        const wrist = [side * 3.3, 7.5, 0.5];
+
+        limb(character, clothes, shoulder, elbow, 0.95);
+
+        limb(character, skin, elbow, wrist, 0.65);
+
+        // Mains
+
+        sphere(
+            character,
+            skin,
+            side * 3.3,
+            7.1,
+            0.5,
+            0.75,
+            0.8,
+            0.65
+        );
+
+    }
+
+    // ----------------------------------------------------
+    // TÊTE
+    // ----------------------------------------------------
+
+    sphere(
+        character,
+        skin,
+        0,
+        19.5,
+        0,
+        2.1,
+        2.5,
+        1.8
+    );
+
+    // ----------------------------------------------------
+    // OREILLES
+    // ----------------------------------------------------
+
+    sphere(character, skin, -2.05, 19.5, 0, 0.45, 0.7, 0.4);
+    sphere(character, skin, 2.05, 19.5, 0, 0.45, 0.7, 0.4);
+
+    // ----------------------------------------------------
+    // YEUX
+    // ----------------------------------------------------
+
+    for (const side of [-1, 1]) {
+
+        sphere(
+            character,
+            white,
+            side * 0.8,
+            20,
+            1.55,
+            0.42,
+            0.35,
+            0.2
+        );
+
+        sphere(
+            character,
+            dark,
+            side * 0.8,
+            20,
+            1.72,
+            0.18,
+            0.23,
+            0.12
+        );
+
+    }
+
+    // ----------------------------------------------------
+    // NEZ
+    // ----------------------------------------------------
+
+    sphere(
+        character,
+        skin,
+        0,
+        19.4,
+        1.85,
+        0.35,
+        0.65,
+        0.4
+    );
+
+    // ----------------------------------------------------
+    // BOUCHE
+    // ----------------------------------------------------
+
+    limb(
+        character,
+        dark,
+        [-0.35, 18.4, 1.72],
+        [0.35, 18.4, 1.72],
+        0.07
+    );
+
+    // ----------------------------------------------------
+    // CHEVEUX
+    // ----------------------------------------------------
+
+    sphere(
+        character,
+        hair,
+        0,
+        21.5,
+        -0.1,
+        2.15,
+        1.15,
+        1.9
+    );
+
+    if (female) {
+
+        // Cheveux longs
+
+        sphere(
+            character,
+            hair,
+            -1.7,
+            18.8,
+            -0.3,
+            0.65,
+            2.8,
+            0.8
+        );
+
+        sphere(
+            character,
+            hair,
+            1.7,
+            18.8,
+            -0.3,
+            0.65,
+            2.8,
+            0.8
+        );
+
+    } else {
+
+        // Barbe
+
+        sphere(
+            character,
+            hair,
+            0,
+            18.2,
+            1.1,
+            1.25,
+            0.75,
+            0.7
+        );
+
+    }
+
+    // ----------------------------------------------------
+    // ÉPAULES
+    // ----------------------------------------------------
+
+    sphere(character, clothes, -2.1, 14, 0, 1.1, 1.1, 1.1);
+    sphere(character, clothes, 2.1, 14, 0, 1.1, 1.1, 1.1);
+
+    // ----------------------------------------------------
+    // ACCESSOIRE : SAC DU CONSTRUCTEUR
+    // ----------------------------------------------------
+
+    if (!female && /homme|man|builder/i.test(label)) {
+
+        const bag = new THREE.Mesh(
+            new THREE.BoxGeometry(2.8, 4, 1.5),
+            secondaryClothes
+        );
+
+        bag.position.set(0, 12, -1.8);
+
+        bag.castShadow = true;
+
+        character.add(bag);
+
+    }
+
+    // ----------------------------------------------------
+    // IDENTITÉ DU PERSONNAGE
+    // ----------------------------------------------------
+
+    character.position.set(x, 0, z);
+
+    character.userData = {
+
+        kind: "person",
+
+        label: label,
+
+        owner: owner,
+
+        gender: female ? "female" : "male"
+
+    };
+
+    this.scene.add(character);
+
+    this.objects.set(id, character);
+
+    return character;
+
+},
 
 
     // ========================================================
